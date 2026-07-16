@@ -35,11 +35,33 @@ from the other. Duplicated facts drift and then lie.
 
 ## Non-negotiables
 
+0. **Never invent a requirement.** Every requirement traces to something Toni actually
+   said. Not to something he implied, not to a reasonable inference from what he said,
+   not to what a sensible product would obviously need. If he hasn't said it, it is an
+   **open question**, and open questions go in a list and get asked — they do not get
+   written down as requirements and then quietly become true.
+
+   This has already gone wrong once. FR-002 required a locally-hosted open model because
+   Toni said "maybe there's a great cheap open source model that will do the trick," and
+   an agent turned *open-source model* into *locally-hosted model*. He then had to argue
+   against his own spec to correct a thing he never said. That is the failure this rule
+   exists to prevent, and it is exactly what made the original inherited draft worthless.
+
+   A fabricated requirement is worse than a missing one. A missing requirement is a
+   question. A fabricated one is a lie with an ID that code gets written against.
+
+   When drafting a requirement from a conversation, quote the words it came from. If you
+   can't, you're inventing.
+
 1. **Specs are the source of truth, and they lose to you.** If a requirement or ADR
    contradicts what Toni just asked for, that is not a blocker and not an argument.
    Surface it as a clarification — "this contradicts FR-014 / ADR-0003, are we changing
    that decision?" — and if the answer is yes, update the spec *in the same increment*.
    Never leave code and spec disagreeing. Never use a spec to refuse a request.
+
+   **But first check the spec is real.** Before telling Toni his request contradicts a
+   requirement, confirm that requirement came from him. If it didn't, the contradiction
+   is fiction and raising it wastes his time defending a position he never took.
 
 2. **Every behavior change updates the requirements.** No exceptions, including for
    changes that feel too small to document. A requirement that describes last month's
@@ -96,14 +118,23 @@ can't break anyone else's build.
 
 ### Before starting: Definition of Ready
 
-Post this list with ✅/❌ per item. Any ❌ means we align before writing code.
+**The DOR is a gate, not an announcement.** Post the list, then stop. Toni gives an
+explicit go-ahead. No code is written before that go-ahead — not a scaffold, not a
+"quick start while we discuss," nothing. Posting a DOR and building in the same turn is
+not a DOR; it's a courtesy notice, and it defeats the entire point of aligning first.
 
+If any item is ❌ or ⚠️, that is the thing to resolve. It is never a thing to note and
+proceed past.
+
+- ✅/❌ **Every requirement in play traces to something Toni said** — quote it. Requirements
+  I inferred are open questions, not requirements. See Non-negotiable 0.
 - ✅/❌ The requirement is clear, and we know which FR/NFR IDs are in play (new or existing)
 - ✅/❌ We know which specs change: requirements, ENGINEERING.md, which ADRs
 - ✅/❌ Any decision with real alternatives has an ADR planned, not an assumption
 - ✅/❌ We have read the affected code paths and can say concretely how they change
 - ✅/❌ Research needed to make this decision is done, or is explicitly this increment's first step
-- ✅/❌ Toni has agreed to the scope
+- ✅/❌ **Toni has given an explicit go-ahead.** His words, this increment. Not inferred
+  from enthusiasm, not from "let's build," not from a previous increment's approval.
 
 Don't fake a ✅. A ❌ with a sentence about why is the point of the list.
 
