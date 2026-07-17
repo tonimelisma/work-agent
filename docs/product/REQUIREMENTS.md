@@ -51,6 +51,7 @@ capability because a competitor lacks it.
 | **FR-055** | The system shall allow the user to designate which configured provider and model is used. | implied by "one or more providers" | Specified |
 | **FR-057** | The system shall allow the user to remove a configured provider, and shall delete its stored credential when they do. | inferred — standard practice | Specified |
 | **FR-052** | The system shall store provider credentials in the macOS Keychain, and shall not write them to preferences, logs, or application state. | inferred — standard practice | Specified |
+| **FR-067** | Where a provider is OpenAI, the system shall support both an API key and subscription-based sign-in. | "for GPT, we should support both API key as well as subscription" | Specified — see caveat |
 | **FR-056** | When the user supplies a credential, the system shall verify it against the provider before reporting the provider as usable. | inferred — standard practice | Specified |
 | **FR-054** | If the model registry cannot be fetched, then the system shall fall back to its bundled snapshot and remain fully usable. (ADR-0005) | inferred — ADR-0005 design | Specified |
 | **NFR-007** | Registry decoding shall be lenient: unknown fields ignored, and an entry that fails to decode shall be skipped rather than fail the load. (ADR-0005) | inferred — ADR-0005 design | Specified |
@@ -59,29 +60,51 @@ capability because a competitor lacks it.
 The five marked *inferred* are mine, not Toni's. They're standard practice and he's seen
 them listed without objection, but they have not been explicitly confirmed.
 
+**Caveat on FR-067 (OpenAI subscription sign-in).** Recorded because Toni asked for it.
+The risk is unquantified, and it should not be built without deciding to accept that:
+
+- **OpenAI does not document permission.** Their auth docs describe sign-in for "the
+  ChatGPT desktop app, Codex CLI, and IDE extension" — their own products. No partner
+  program, no allowlist, no third-party path. That is *absence of stated permission*,
+  which is weaker than Anthropic's explicit ban — the two should not be conflated.
+- **OpenClaw's docs assert "OpenAI explicitly supports subscription OAuth usage in
+  external tools,"** but cite nothing: no OpenAI policy, no announcement, no statement,
+  and no risk caveat. A third party asserting another vendor's policy, with a commercial
+  interest in it being true, is not evidence of that policy.
+- **The precedent runs one way.** Anthropic and Google both closed this path in 2026.
+
+Not a blocker, and Toni's call to make. But FR-067 rests on an unsourced claim, and that
+should be visible in the spec rather than discovered later.
+
 ### The curated set (FR-061, FR-062)
 
-First-party providers only. Verified present in the models.dev snapshot on 2026-07-16
-unless noted.
+Toni's list, verbatim. Eleven first-party providers, sixteen models. Every ID verified
+against a live `models.dev/api.json` on 2026-07-16; all sixteen report `tool_call: true`.
 
-| Provider | Models |
-|---|---|
-| `openai` | `gpt-5.6`, `gpt-5.6-sol`, `gpt-5.6-luna`, `gpt-5.6-terra` — "GPT-5.6 all variants" |
-| `anthropic` | `claude-opus-4-8`, `claude-sonnet-5`, `claude-fable-5` — "fable/opus/sonnet latest" |
-| `google` | `gemini-3.5-flash` |
-| `xai` | `grok-4.5` |
-| `deepseek` | `deepseek-v4-pro` |
-| `zai` | GLM-5.2 |
-| `alibaba` | Qwen 3.7 Max |
-| `meta` | `muse-spark-1.1` |
-| `moonshotai` | **unresolved** — Toni asked for Kimi K3; the registry's latest is K2.7 |
-| — | **unresolved** — Toni asked for "Inkling"; zero matches across 5,667 models |
+| Provider | Model IDs | Toni's words |
+|---|---|---|
+| `openai` | `gpt-5.6`, `gpt-5.6-sol`, `gpt-5.6-luna`, `gpt-5.6-terra` | "GPT-5.6 all variants" |
+| `anthropic` | `claude-opus-4-8`, `claude-sonnet-5`, `claude-fable-5` | "fable/opus/sonnet latest" |
+| `moonshotai` | `kimi-k3` | "Kimi K3" |
+| `xai` | `grok-4.5` | "Grok 4.5" |
+| `zai` | `glm-5.2` | "GLM-5.2" |
+| `meta` | `muse-spark-1.1` | "Muse Spark 1.1" |
+| `google` | `gemini-3.5-flash` | "Gemini 3.5 Flash" |
+| `deepseek` | `deepseek-v4-pro` | "Deepseek V4 Pro" |
+| `minimax` | `MiniMax-M3` | "Minimax-M3" |
+| `thinkingmachines` | `inkling` | "Inkling" |
+| `alibaba` | `qwen3.7-max` | "Qwen 3.7 Max" |
 
-**Dropped:** MiniMax M3 — not available first-party (`minimax` stops at M2.7); available
-only via resellers, which FR-062 excludes. *"If Minimax M3 is not available from 1P,
-forget about it."*
+All eleven ship together. *"start with all of the ones I said."*
 
-**Sequencing** of which providers ship first is in [ROADMAP.md](ROADMAP.md), not here.
+**Note (2026-07-16):** an earlier pass reported Kimi K3, Inkling, and MiniMax-M3 as
+absent from the registry, and recommended dropping MiniMax on that basis. That was
+wrong — it read a snapshot that had gone stale within about an hour of being fetched.
+All three are first-party and present. See
+[research/llm-provider-registries.md](../research/llm-provider-registries.md) § staleness.
+
+`thinkingmachines` is worth noting mechanically: it authenticates with `TINKER_API_KEY`
+against an OpenAI-compatible endpoint, so it needs no bespoke adapter.
 
 ## Traces and their presentation
 
@@ -115,13 +138,12 @@ Stated, so their absence is a decision:
 - **Locally-hosted models. Ever.** *"no local models ever."* The provider abstraction
   must not assume hosted, but no local provider will be built.
 - **Resellers and aggregators.** FR-062. *"no resellers for now."*
-- **Subscription-based authentication.** Not a choice — see
-  [research/provider-subscription-auth.md](../research/provider-subscription-auth.md).
-  Anthropic bans it and enforces with account suspensions; Google closed it; OpenAI
-  documents it for first-party clients only. The tools that do it anyway impersonate
-  Codex CLI through a localhost proxy to defeat an auth check, which would put *our
-  users'* accounts at risk. **Open decision for Toni** — this contradicts what he asked
-  for, so it is flagged rather than settled.
+- **Anthropic subscription authentication.** Anthropic's own docs: OAuth "is intended
+  exclusively for Claude Code and Claude.ai," and using Pro/Max tokens "in any other
+  product, tool, or service constitutes a violation" — enforced since early 2026 with
+  account suspensions. This is a firm ban with a named consequence for *our users*, not
+  an ambiguity. OpenAI is a separate and genuinely open question — see FR-067 below.
+  Evidence: [research/provider-subscription-auth.md](../research/provider-subscription-auth.md).
 - **Specific tool approvals.** *"specific tool approvals will come later."*
 
 ## Deliberately unspecified

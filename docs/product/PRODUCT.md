@@ -21,9 +21,9 @@ We're betting that:
 - **The app layer is where the durable value ends up** — the interaction model, the
   trust model, the memory, the integrations, the judgment about what to show a user
   and when to ask.
-- ~~**Users already pay for a model subscription** and don't want to pay again per app.
-  A ChatGPT or Claude subscription they already pay for should just work.~~
-  **This plank is not available — see below.**
+- **Users already pay for a model subscription** and don't want to pay again per app.
+  A ChatGPT or Claude subscription they already pay for should just work.
+  **Partly blocked — see below.**
 
 If that's right, an app that innovates independently of any model vendor wins ground
 that the vendors' own apps cannot contest. If it's wrong — if one model runs away with
@@ -36,11 +36,14 @@ That's the bet. It's stated plainly so we can notice if it stops being true.
 Researched because Toni asked for ChatGPT subscription auth. Full evidence:
 [research/provider-subscription-auth.md](../research/provider-subscription-auth.md).
 
-**No major vendor permits a third-party app to use a customer's subscription.**
-Anthropic explicitly bans it and enforces with account suspensions. Google closed the
-same path. OpenAI documents sign-in for its own clients only, with no third-party
-program. The tools that do it anyway run a localhost proxy impersonating Codex CLI to
-defeat the auth check — which risks *our users'* accounts, not ours.
+**Anthropic bans it outright** — OAuth is "intended exclusively for Claude Code and
+Claude.ai," enforced since early 2026 with account suspensions. **Google closed the same
+path.** **OpenAI is genuinely unclear**: it documents sign-in for its own clients only,
+but prohibits nothing. The claim that OpenAI "explicitly supports" third-party
+subscription OAuth comes from OpenClaw's own docs and cites no OpenAI source.
+
+So the plank half-survives: the Claude half is dead, the ChatGPT half rests on one
+vendor's silence (FR-067).
 
 **The wedge survives in its stronger form.** Planks 1 and 2 are untouched, and the
 structural advantage was never really the subscription: **no vendor's own app will ever
@@ -154,9 +157,10 @@ that depends on them.
   available to pick from, so this quietly constrains the product. See ROADMAP.md.
 - **What "neutral" means mechanically.** Adapter per provider, OpenAI-compatible
   endpoint, or a proxy layer. Subject of the runtime research spike and ADR-0006.
-- **Subscription auth.** Toni asked for it; no vendor permits it. See §1. His call.
-- **Two curated models are unresolved:** "Kimi K3" (registry's latest is K2.7) and
-  "Inkling" (no match in 5,667 models). See REQUIREMENTS.md.
+- **OpenAI subscription sign-in (FR-067).** Toni asked for it. Anthropic's equivalent is
+  explicitly banned; OpenAI's is undocumented — neither permitted nor prohibited. The
+  "OpenAI explicitly supports this" claim comes from OpenClaw's docs and cites nothing.
+  Risk is unquantified. His call. See §1.
 - **How a non-technical user gets an API key.** The subscription plank was going to
   solve onboarding. It's gone, and nothing replaces it yet. This is the sharpest open
   product problem.

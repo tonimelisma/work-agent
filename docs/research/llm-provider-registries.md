@@ -29,7 +29,7 @@ GitHub Action validates against a schema.
 | HTTP | 200, `application/json` |
 | Size | 3.18 MB uncompressed |
 | Latency | ~160 ms |
-| Providers | 166 |
+| Providers | 166 at 00:27; **167 an hour later** — see staleness below |
 | Models | 5,666 |
 | Tool-capable (`tool_call: true`) | 4,512 |
 | Models missing `tool_call` | **0** — field is universal |
@@ -78,6 +78,35 @@ Model level:
 
 Models are addressed `providerID/modelID`.
 
+### Staleness: the registry moved under us within an hour
+
+**The most important operational finding here, learned by getting it wrong.**
+
+A snapshot of `api.json` fetched at 00:27 on 2026-07-16 had **166 providers** and did not
+contain `moonshotai/kimi-k3`, `minimax/MiniMax-M3`, or `thinkingmachines/inkling` — the
+`thinkingmachines` provider did not exist in it at all. A re-fetch roughly an hour later
+returned **167 providers** with all three present.
+
+An agent used the stale snapshot to tell Toni those models "aren't in the registry" and
+to recommend dropping MiniMax. All of that was false. He checked `catalog.json`, found
+them, and was right.
+
+Two lessons, and the second is the one that changes design:
+
+1. **Never answer "does this exist" from a local snapshot.** Re-fetch. The cost is
+   160 ms.
+2. **A bundled snapshot is a stale floor, not a source of truth.** ADR-0005 framed the
+   bundle as "the source of truth at launch," with the network as an improvement. That
+   framing is wrong in the direction that matters: the data can be *hours* stale, and
+   staleness is silent — a missing model looks exactly like a model that doesn't exist.
+   The bundle's job is keeping the app usable offline. The network's job is being right.
+   Refresh should be eager, not opportunistic.
+
+`catalog.json` and `api.json` were also compared directly once both were fresh: **167
+providers each, identical membership.** `catalog.json` is `{models, providers}` —
+258 provider-agnostic model entries plus the same provider tree. There is no
+completeness difference between the endpoints. The discrepancy was purely staleness.
+
 ### Gaps and risks — the reason this doc exists
 
 **No base URL for the majors.** `anthropic`, `openai`, and `google` have no `.api`
@@ -125,4 +154,5 @@ attention is. If the AI SDK's needs and ours diverge, the registry follows the A
   bundled-snapshot-plus-refresh design absorbs it, but the UI would show stale models.
 - **Whether `cost` units are consistent** across providers (assumed USD per million
   tokens — not verified).
-- **`models.json` / `catalog.json`** shapes. Only `api.json` was probed.
+- **`models.json`** shape. `api.json` and `catalog.json` have now both been probed and
+  match; `models.json` has not.

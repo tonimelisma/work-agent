@@ -86,5 +86,22 @@ tracked in the research doc, not solved.
 ## Validation
 
 The registry claim that matters most — `tool_call` — is unverified against real provider
-behavior. When tools land (roadmap increment 4), spot-check it. If it's unreliable, this
-ADR needs a follow-up on whether we trust registry capability data or probe for it.
+behavior. When tools land, spot-check it. If it's unreliable, this ADR needs a follow-up
+on whether we trust registry capability data or probe for it.
+
+**Validated 2026-07-16, and it cost us.** The decision above stands — models.dev is still
+the right registry. But one stated consequence was measured and found wrong:
+
+> "**Bundle a snapshot** of `api.json` in the app. It is the source of truth at launch."
+
+The registry gained a provider and three models **within an hour** of a snapshot being
+taken. An agent then used that snapshot to tell Toni three of his chosen models didn't
+exist. They did.
+
+The bundle is a **stale floor for offline use**, not a source of truth. The network is
+the source of truth and refresh must be eager. The decision doesn't change; the framing
+of the consequence does. Detail:
+[research/llm-provider-registries.md](../research/llm-provider-registries.md) § staleness.
+
+If eager refresh proves to conflict with NFR-008 (don't block launch), that tension needs
+a new ADR rather than a quiet compromise.

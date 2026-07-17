@@ -47,28 +47,26 @@ an API key, have it verified, pick which is active. Nothing else.
 
 FR-050, FR-051, FR-052, FR-054, FR-055, FR-056, FR-057, FR-061, FR-062, NFR-007, NFR-008.
 
-### Which providers first — recommendation, pending Toni's word
+### Scope: all eleven providers
 
-**Start with `openai` and `anthropic` only.** Seven models: `gpt-5.6` ×4 variants,
-`claude-opus-4-8`, `claude-sonnet-5`, `claude-fable-5`.
+*"start with all of the ones I said."* The full curated set in REQUIREMENTS.md ships in
+this increment — eleven first-party providers, sixteen models.
 
-Why those two:
+A two-provider start was proposed and rejected. Recording why it's not a problem: of the
+eleven, only `anthropic` and `google` need bespoke request shapes. The other nine are
+OpenAI-compatible — `thinkingmachines`, for instance, is literally `TINKER_API_KEY`
+against an OpenAI-compatible endpoint. So eleven providers is roughly three auth styles
+and three request shapes, not eleven of anything.
 
-- They're where most of the curated set lives, so the menu is useful immediately.
-- **They're the two competitors.** Cowork is Anthropic's; ChatGPT Work is OpenAI's.
-  Being the one app that runs both *is* the thesis, demonstrated on the sharpest
-  possible ground.
-- **Their APIs disagree in the way that matters.** Anthropic emits `tool_use` blocks;
-  OpenAI emits `tool_calls`. Two vendors that both spoke OpenAI's dialect would be a
-  fake test of the provider seam. These two make it a real one from day one.
+The risk that remains is real but bounded: **verifying eleven providers live needs
+eleven accounts with credit.** Any we can't test is a provider we're shipping on faith.
+That is a testing problem to name, not a reason to cut the list.
 
-Everything else in the curated set — Google, xAI, DeepSeek, Zhipu, Alibaba, Meta,
-Moonshot — is deferred to a later increment. Most are OpenAI-compatible and cheap to add
-once the seam is proven; adding them before it's proven just multiplies unknowns.
-
-**Done when:** a real key for each of two vendors is stored, verified live, and survives
-relaunch; the app is fully usable with the network down; no credential appears in
-preferences or logs; and the menu shows only curated first-party models.
+**Done when:** a real key is stored and verified live for every provider we have an
+account for, and survives relaunch; the app is fully usable with the network down; no
+credential appears in preferences or logs; the menu shows only the curated sixteen; and
+any provider that could not be verified against a live account is named in the DOD
+rather than quietly assumed to work.
 
 ## Increment 3 — Runtime and neutrality research → ADR-0006
 
