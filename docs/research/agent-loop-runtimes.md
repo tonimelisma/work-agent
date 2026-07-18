@@ -11,6 +11,13 @@ provider failover (FR-006)? Increment 2 changed the starting position: the app n
 ships two working native streaming adapters (ADR-0007) covering all eleven curated
 providers — any option that discards them starts from behind.
 
+For the deeper developer-facing comparison of current framework features, production
+runtime practices, and what could justify a native Swift AgentKit beyond the loop,
+see [agent-framework-comparison.md](agent-framework-comparison.md).
+The macOS 27 Foundation Models APIs materially change the native option; the proposed
+hybrid and the POC gates required before revisiting ADR-0006 are in
+[foundation-models-adaptation.md](foundation-models-adaptation.md).
+
 ---
 
 ## Live POC: tool calling over our two wire formats

@@ -229,6 +229,9 @@ wrong destroys the value of every other line.
 
 - Swift, SwiftUI, `swift-testing`. Monolith for now — SPM packages get extracted when
   we know where the seams are, not before. See ADR-0002.
+- **Never add UI tests.** The project has no UI-test target and will not gain one;
+  acceptance is verified by running the app, while automated coverage stays unit and
+  contract-level.
 - Distribution is Developer ID + notarized, never Mac App Store. The sandbox would
   forbid most of what this product does. See ADR-0003.
 - Never present MCP, tool schemas, JSON-RPC, OAuth scopes, or AXUIElement to the user.

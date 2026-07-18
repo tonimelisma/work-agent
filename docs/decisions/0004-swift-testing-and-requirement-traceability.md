@@ -20,7 +20,7 @@ starting, because a half-maintained trace is a trace that lies.
 
 ## Decision
 
-**swift-testing**, unit and contract tests. No XCUITest for now.
+**swift-testing**, unit and contract tests. No XCUITest — now or later.
 
 Requirement IDs go in the test's display name:
 
@@ -50,8 +50,8 @@ still occasionally rough.
 Rejected: no meaningful advantage for a greenfield project, and it's the framework being
 migrated away from. Starting on it means a migration later for nothing.
 
-**Both** — XCTest for UI, swift-testing for units. Rejected for now with XCUITest below;
-revisit if UI tests ever earn their place.
+**Both** — XCTest for UI, swift-testing for units. Rejected permanently with XCUITest
+below; UI tests will not be adopted.
 
 ### Attaching IDs
 
@@ -76,10 +76,9 @@ implemented" and "FR-001 is verified" are different claims.
 
 ### XCUITest
 
-**Skip it** *(chosen)* — Slow, flaky, and it would dominate increment time while the UI
-changes weekly. It would also be the layer that most directly demonstrates acceptance
-criteria, which is a real loss, honestly stated. The DOD's "I ran it" line is the
-stopgap, and it's a human check, not an automated one.
+**Never adopt it** *(chosen)* — Slow, flaky, and it would dominate increment time
+without testing the model/provider behavior that matters. The DOD's "I ran it" line is
+the intentional human acceptance check, not a temporary stopgap.
 
 ## Consequences
 

@@ -80,8 +80,9 @@ is plain streaming chat.
 
 ## Testing
 
-`swift-testing`, unit and contract. No XCUITest while the UI churns — it would dominate
-increment time and tell us little.
+`swift-testing`, unit and contract. **No UI-test target, now or later.** UI automation
+is permanently outside this product's test strategy: it is slow, flaky, and would
+dominate increment time without testing the model/provider behavior that matters.
 
 Requirement IDs go in test display names:
 
