@@ -1,7 +1,7 @@
 # Foundation Models adaptation POC
 
 An isolated macOS 27 conformance harness. It does not belong to the production app
-target and does not change the runtime decision in ADR-0006.
+target; its results are the technical evidence behind the accepted ADR-0006 hybrid.
 
 ## Reproducible offline gate
 
