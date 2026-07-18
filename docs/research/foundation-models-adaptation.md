@@ -487,6 +487,14 @@ semantics, cancellation, retry, transcript reconstruction, and the schema compat
 table remain critical gates. They cannot be inferred from direct HTTP success, so the
 experiment remains a conformance harness and ADR-0006 does not change.
 
+The runtime gate failed conclusively on this Mac: a minimal custom
+`LanguageModelExecutor` compiled against Xcode 27's SDK but its test bundle could not
+load because the installed `/System/Library/Frameworks/FoundationModels.framework` lacks
+`LanguageModelExecutorGenerationChannel.send`. This is a SDK/runtime mismatch, not a
+provider issue. It prevents executing the executor/session POC here, therefore the
+hybrid is **not adoptable** for this project at present. The harness retains only the
+offline API-surface check, which does not call the unavailable symbol.
+
 ### Explicitly out of scope
 
 - Production UI, task persistence, or migration of the current chat screen.
