@@ -31,10 +31,11 @@ conform to Apple's public `LanguageModel`/`LanguageModelExecutor` protocols itse
   Apple's tool protocol is the model-facing callable shape, not the policy boundary.
 
 Do not commit to that architecture solely from API inspection. Run one bounded POC
-before increment 4: one OpenAI-compatible provider and Anthropic, each completing a
-streamed two-request tool cycle through `LanguageModelSession`, including signed
-reasoning/metadata round-trip and a model switch. If the POC passes the gates below,
-update ADR-0006 before building the production loop.
+before increment 4: **two executor implementations** (OpenAI-compatible and Anthropic)
+tested against **three live providers** (DeepSeek, Google, and Anthropic). Each executor
+completes a streamed two-request tool cycle through `LanguageModelSession`; together
+the cases cover signed reasoning/metadata round-trip and a model switch. If the POC
+passes the gates below, update ADR-0006 before building the production loop.
 
 ---
 
@@ -282,6 +283,195 @@ evidence to retain or narrow the custom layer, not something to hand-wave.
   unsupported-keyword diagnostic and a documented fallback path.
 - Full tool output still reaches the Work Agent trace before the Apple-facing result is
   budgeted.
+
+---
+
+## POC execution instructions
+
+This is deliberately a decision spike, not an early production implementation. It
+contains executable Swift and therefore follows the repo's code-increment workflow:
+post a DOR, get Toni's explicit go-ahead, triage/claim the review backlog, create a
+worktree and PR, and report the normal DOD. The DOR should quote Toni's request for the
+POC and identify ADR-0006 as the decision potentially changing; it should not invent
+new product FRs for experimental code.
+
+### 1. Create an isolated experiment target
+
+Add a Swift package at `Experiments/FoundationModelsPOC/`, requiring macOS 27 and
+containing no production-app target membership:
+
+```text
+Experiments/FoundationModelsPOC/
+  Package.swift
+  Sources/FoundationModelsPOC/
+    DurableTranscript.swift
+    FoundationModelsToolBridge.swift
+    OpenAICompatibleModel.swift
+    AnthropicModel.swift
+    ProbeRunner.swift
+  Tests/FoundationModelsPOCTests/
+    ExecutorFixtureTests.swift
+    DurableTranscriptTests.swift
+    SchemaBridgeTests.swift
+    SessionBehaviorTests.swift
+  Tests/Fixtures/
+    deepseek/
+    google/
+    anthropic/
+```
+
+The executor types may reuse or extract the existing request/SSE parsing logic for the
+experiment, but production files are not refactored during the spike. The purpose is
+to prove the Apple seam, not begin the migration before the decision.
+
+### 2. Implement the smallest provider conformances
+
+- `OpenAICompatibleModel: LanguageModel` and its `LanguageModelExecutor` translate
+  Apple's request transcript/tool definitions/options into the existing OpenAI-
+  compatible wire shape, then translate SSE into response, reasoning, tool-call,
+  metadata, signature, and usage channel events.
+- `AnthropicModel: LanguageModel` and its executor do the equivalent for Anthropic
+  messages/content blocks.
+- Provider credentials and base URLs are injected by the probe runner. No secret is
+  written to fixtures, logs, command output, metadata, or the trace.
+- Unsupported Apple transcript entries or generation options fail explicitly; the POC
+  must not silently flatten them.
+
+### 3. Add one safe bridged tool
+
+Implement a POC-only `read_fixture` Work Agent tool that can read only a committed
+fixture directory. Wrap it in `FoundationModelsToolBridge` and exercise all of the
+path below:
+
+```text
+LanguageModelSession
+  → FoundationModels.Tool.call
+  → Work Agent-style ToolRunner stub
+  → complete raw trace capture
+  → budgeted Tool output
+  → LanguageModelSession continuation
+```
+
+Add a second validation case in which the model first supplies invalid arguments, gets
+a structured corrective tool result, and succeeds on the next attempt. This determines
+whether Apple permits the recoverable tool-error behavior Work Agent needs.
+
+### 4. Capture and replay the two executor shapes
+
+For each live call, save a scrubbed fixture containing:
+
+- the provider request body with credentials and user-specific content removed;
+- raw SSE `data` payloads in arrival order;
+- executor channel events produced from those payloads;
+- the resulting Apple transcript entries; and
+- the second provider request that replays the reasoning/tool state.
+
+Fixture tests run without network or keys and assert exact IDs, source ordering,
+partial-argument accumulation, signatures/metadata, stop semantics, and usage. Do not
+record arbitrary response prose as a golden value; assert the structural trajectory.
+
+### 5. Run three live round trips
+
+Use one deterministic prompt that requires `read_fixture`, then asks the model to
+report the fixture's sentinel value. Run it through:
+
+1. DeepSeek via `OpenAICompatibleModel` — proves `reasoning_content` replay;
+2. Google via `OpenAICompatibleModel` — proves thought-signature metadata replay; and
+3. Anthropic via `AnthropicModel` — proves signed thinking-block replay.
+
+Each case must observe model request → streamed tool call → bridged local execution →
+tool output → second model request → final response. A single-request “the model
+emitted a tool call” probe does not count.
+
+### 6. Exercise session semantics with deterministic executors
+
+Use scripted in-process `LanguageModelExecutor` fakes, not paid live calls, to test:
+
+- two simultaneous tool calls preserve provider source order while the bridge applies
+  a concurrency limit;
+- cancellation reaches the executor and tool tasks;
+- a stream that fails after partial response/tool arguments can retry without
+  committing duplicate transcript entries;
+- response/reasoning/tool/usage events are observable in time for a live UI; and
+- a session reconstructed from `DurableTranscript` yields the expected next request.
+
+Test model switching both ways: first with scripted executors for exact assertions,
+then once live from DeepSeek to Anthropic using a reconstructed session or dynamic
+profile. Record which provider metadata is preserved in canonical state and which is
+excluded from the new provider's request.
+
+### 7. Test the schema boundary
+
+- Convert the schemas for `ask_user`, `update_plan`, and the six planned file tools to
+  `GenerationSchema` and back to the POC's canonical schema representation.
+- Test representative MCP schemas: nested objects, arrays, enums, optional fields,
+  unions/`anyOf`, numeric constraints, additional properties, and `$ref`.
+- Produce a table of supported, transformed, and rejected JSON Schema features. Every
+  rejection includes the keyword and path. Do not add a lossy catch-all conversion to
+  make the test green.
+
+### 8. Run and report
+
+The offline gate is one command from the repository root:
+
+```bash
+swift test --package-path Experiments/FoundationModelsPOC
+```
+
+The package also exposes one probe command whose help lists the three provider cases
+and whose output is a pass/fail matrix without secrets. The exact invocation is fixed
+in the package README once argument parsing is implemented; it must support running
+one provider at a time so a failed or unfunded provider does not hide other results.
+
+Run the offline suite first, then the three live cases. Repeat the offline suite using
+only the captured fixtures to prove the evidence is reproducible without network.
+
+---
+
+## Expected POC deliverable
+
+The deliverable is a **reproducible architecture decision package**, not a demo and not
+production agent code. It is complete only when the PR contains all of these:
+
+1. **Runnable experiment.** `Experiments/FoundationModelsPOC/` builds on a clean
+   checkout and its offline suite passes with the documented command.
+2. **Scrubbed evidence.** Recorded DeepSeek, Google, and Anthropic fixtures cover both
+   executor formats and the second request of each tool cycle. No key or personal data
+   is present.
+3. **Automated results.** Fixture, persistence, cancellation/retry, tool bridge, model
+   switch, and schema tests correspond directly to every gate in the preceding
+   section.
+4. **Live-results matrix.** Provider/model, tool-call emission, tool execution,
+   reasoning/signature replay, second request, final response, cancellation, and
+   failover are marked pass/fail with the exact probe date. A failure includes the raw
+   structural symptom and fixture pointer.
+5. **Schema compatibility table.** Supported and unsupported Apple ↔ canonical/MCP
+   schema features are recorded with the chosen fallback or blocker.
+6. **Measured code delta.** Report the experiment's non-test source lines and identify
+   which existing adapter code was reused. This tests the claim that Apple removes
+   meaningful loop code rather than merely moving it.
+7. **Decision update.** Add a results section to this research doc. If every critical
+   gate passes, update ADR-0006 in place to the hybrid and revise the agent-loop/tool
+   plans in the same doc increment. If a critical gate fails, keep ADR-0006 and record
+   the precise boundary Apple could not satisfy. No ambiguous “promising” conclusion.
+8. **Cleanup decision.** State whether the experiment package remains as a conformance
+   harness, is folded into production tests during implementation, or is deleted after
+   its fixtures/results are preserved. Do not leave an ownerless prototype.
+
+The POC may successfully deliver a **no-adopt** decision. Success means the evidence is
+complete and the architectural consequence is explicit; it does not mean forcing the
+hybrid to pass.
+
+### Explicitly out of scope
+
+- Production UI, task persistence, or migration of the current chat screen.
+- Implementing the planned file tools beyond schema conversion and the safe fixture
+  tool.
+- MCP transport, provider-hosted web search, approvals UI, graph workflows, subagents,
+  or long-term memory.
+- Refactoring the production adapters before the ADR decision.
+- Performance optimization beyond recording enough timing/token data to identify a
+  material regression.
 
 ---
 
