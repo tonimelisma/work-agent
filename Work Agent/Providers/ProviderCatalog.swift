@@ -44,6 +44,26 @@ nonisolated enum ProviderCatalog {
         provider.api ?? fallbackBaseURLs[provider.id]
     }
 
+    // REQ: FR-001 — base URLs for *chat* (streaming inference), which can differ from the
+    // registry's `api` (that one is for model listing / verification). Confirmed by live
+    // probes on 2026-07-16; see docs/research/provider-chat-endpoints.md.
+    //
+    // Two overrides earn their place:
+    //   • google  — registry `api` is the native Gemini endpoint; its OpenAI-compatible
+    //     surface lives under /v1beta/openai, letting Gemini use the OpenAI adapter.
+    //   • minimax — registry `api` is Anthropic-shaped (/anthropic/v1); its
+    //     OpenAI-compatible endpoint is /v1, so one code path covers it.
+    private static let chatBaseURLs: [String: URL] = [
+        "openai": URL(string: "https://api.openai.com/v1")!,
+        "google": URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!,
+        "minimax": URL(string: "https://api.minimax.io/v1")!,
+    ]
+
+    /// Base URL to POST chat completions to.
+    static func chatBaseURL(for provider: RegistryProvider) -> URL? {
+        chatBaseURLs[provider.id] ?? baseURL(for: provider)
+    }
+
     /// Bearer is the right default: the 142 registry providers that publish a base URL
     /// are overwhelmingly OpenAI-compatible, and the exceptions are named above.
     static func authStyle(for providerID: String) -> ProviderAuthStyle {

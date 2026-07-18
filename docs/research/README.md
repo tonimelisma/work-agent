@@ -38,5 +38,6 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 |---|---|---|
 | [spec-driven-development.md](spec-driven-development.md) | SDD practice, EARS, ADR formats — the basis for this repo's doc system | 2026-07-16 |
 | [llm-provider-registries.md](llm-provider-registries.md) | models.dev and alternatives; live API measurements and gaps | 2026-07-16 |
-| [provider-subscription-auth.md](provider-subscription-auth.md) | Whether a third-party app may use someone's ChatGPT/Claude subscription (no) | 2026-07-16 |
+| [provider-subscription-auth.md](provider-subscription-auth.md) | Whether a third-party app may use someone's ChatGPT/Claude subscription; how the OpenAI Codex OAuth flow works | 2026-07-16 |
+| [provider-chat-endpoints.md](provider-chat-endpoints.md) | Live-probed chat endpoint, auth, and reasoning-field details per curated provider | 2026-07-17 |
 | [agent-harness-builtin-tools.md](agent-harness-builtin-tools.md) | Built-in tools in Claude Code/Cowork: full inventory, limits, and how tool output is kept from flooding the context window | 2026-07-17 |

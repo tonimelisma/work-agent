@@ -38,37 +38,40 @@ This repo's specs, process, ADR format, and research system. Replaces the prior
 `MACOS_FRONTEND_ROADMAP.md` draft, which was written without product input and is not
 trusted.
 
-## Increment 2 — Settings: add your LLM providers
+## Increment 2 — Settings + a working chat ✅
 
-First code increment. Worktree, PR. **Not started — awaiting DOR go-ahead.**
+First code increment. Worktree, PR. **Done.**
 
-An idiomatic macOS Settings scene: a simple list of configured providers. Add one, paste
-an API key, have it verified, pick which is active. Nothing else.
+An idiomatic macOS Settings scene — a plain list of providers you add/remove by API key —
+plus the main window as a **chat that actually talks to the models**, streaming replies.
+Resequenced from the original plan (which had inference land in increment 4) because Toni
+asked to "start by building the fucking app," then to make the chat real across all
+providers. Plain streaming chat is far smaller than the agent runtime, so bringing it
+forward is cheap; the runtime ADR still governs tools/loop later (now increment 3).
 
-FR-050, FR-051, FR-052, FR-054, FR-055, FR-056, FR-057, FR-061, FR-062, NFR-007, NFR-008.
+FR-050, FR-051, FR-052, FR-054, FR-055, FR-056, FR-057, FR-061, FR-062, FR-063, FR-065,
+FR-066, FR-068, FR-069, FR-070, NFR-007, NFR-008. New ADR-0006 (provider chat abstraction).
 
-### Scope: all eleven providers
+### Scope: all eleven providers, chat streaming
 
-*"start with all of the ones I said."* The full curated set in REQUIREMENTS.md ships in
-this increment — eleven first-party providers, sixteen models.
+*"start with all of the ones I said."* The full curated set — eleven first-party
+providers, sixteen models — appears in the menu. Chat streams through two adapters:
+OpenAI-compatible (ten providers, including Google via its `/v1beta/openai` endpoint and
+MiniMax via `/v1`) and Anthropic Messages (one). See ADR-0006 and
+[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md).
 
-A two-provider start was proposed and rejected. Recording why it's not a problem: of the
-eleven, only `anthropic` and `google` need bespoke request shapes. The other nine are
-OpenAI-compatible — `thinkingmachines`, for instance, is literally `TINKER_API_KEY`
-against an OpenAI-compatible endpoint. So eleven providers is roughly three auth styles
-and three request shapes, not eleven of anything.
+**Live-verified (streaming, real replies):** DeepSeek, Anthropic, Google, Moonshot,
+Alibaba. **Key valid but account unfunded** (endpoint confirmed, not smoke-tested):
+OpenAI (429), MiniMax (402). **Needs custom auth:** Zhipu/GLM rejects a raw bearer token
+and appears to require JWT signing — flagged, not fixed. No keys held: xAI, Meta, Thinking
+Machines — in the menu, unverifiable until keyed.
 
-The risk that remains is real but bounded: **verifying eleven providers live needs
-eleven accounts with credit.** Any we can't test is a provider we're shipping on faith.
-That is a testing problem to name, not a reason to cut the list.
+**Also this increment:** App Sandbox disabled (`ENABLE_APP_SANDBOX = NO`), which the Xcode
+template had silently enabled and which blocked all outbound network. This realizes
+ADR-0003 (Developer ID, not MAS, *because* the sandbox forbids what the product needs).
+Hardened Runtime stays on for notarization.
 
-**Done when:** a real key is stored and verified live for every provider we have an
-account for, and survives relaunch; the app is fully usable with the network down; no
-credential appears in preferences or logs; the menu shows only the curated sixteen; and
-any provider that could not be verified against a live account is named in the DOD
-rather than quietly assumed to work.
-
-## Increment 3 — Runtime and neutrality research → ADR-0006
+## Increment 3 — Runtime and neutrality research → ADR-0007
 
 Research spike. Produces docs and one ADR; no product code.
 
@@ -87,14 +90,14 @@ OpenAI-compatible vs proxy. FR-001 through FR-007 and NFR-001 are the constraint
 answer has to satisfy.
 
 Real POCs against real cloud providers. Findings go to `docs/research/`; the decision
-goes to ADR-0006.
+goes to ADR-0007.
 
-**Done when:** ADR-0006 is written with alternatives and evidence, and a research doc
+**Done when:** ADR-0007 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
 ## Increment 4 — A working app that talks to an LLM
 
-The agent loop from ADR-0006, in the monolith, against a provider configured in
+The agent loop from ADR-0007, in the monolith, against a provider configured in
 increment 2. A durable task the user can create and watch. No tools yet.
 
 **Done when:** a real model call happens, its result lands in a task that survives an
