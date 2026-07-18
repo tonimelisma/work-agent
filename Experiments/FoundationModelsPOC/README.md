@@ -12,7 +12,7 @@ swift test --package-path Experiments/FoundationModelsPOC
 swift run --package-path Experiments/FoundationModelsPOC foundation-models-probe all
 ```
 
-The first command runs 19 Swift Testing cases. The second replays representative,
+The first command runs 20 Swift Testing cases. The second replays representative,
 credential-free provider stream fixtures and prints a structural pass/fail matrix.
 Run one fixture case with `deepseek`, `google`, or `anthropic` instead of `all`.
 

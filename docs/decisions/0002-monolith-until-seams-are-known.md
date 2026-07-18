@@ -1,4 +1,4 @@
-# ADR-0002 — Monolith until the seams are known
+# ADR-0002 — Monolith except for proven package seams
 
 - **Status:** Accepted
 - **Date:** 2026-07-16
@@ -19,26 +19,30 @@ Module boundaries are cheap to add and expensive to move. A wrong boundary drawn
 doesn't announce itself; it gets defended, because by then there's code on both sides of
 it. Every subsequent decision routes around it.
 
-The codebase today is an Xcode template. We do not know where this system wants to be
-divided.
+The codebase began as an Xcode template. The Foundation Models adaptation POC and the
+agent-framework comparison have now established one concrete reusable boundary, and
+Toni confirmed it directly: "the Swift agentic framework ... will be an SPM."
 
 ## Decision
 
-Build in the single existing app target. Extract SPM packages only when a specific seam
-demonstrably hurts — slow builds, a real testability problem, an actual reuse need.
+Keep product code in the single app target by default. Introduce one SPM package for the
+native Swift agent runtime described by ADR-0006. Its boundary is now evidenced rather
+than guessed: it has an independent conformance harness, a platform substrate, a clear
+dependency direction, and a reusable developer-facing purpose distinct from the app.
 
-**One exception**, and it's derived rather than guessed: the provider abstraction
-(FR-001, NFR-001). That seam exists because model neutrality is the product thesis, not
-because it looks tidy. It doesn't have to be a package to be a boundary.
+The resulting dependency direction is Work Agent app → Swift agent-runtime package →
+macOS 27 Foundation Models. App UI, credentials, catalog, task storage and product tool
+policy remain outside the package. No other SPM package is created until a specific
+seam demonstrably hurts through slow builds, a real testability problem or actual reuse.
 
 "It hurts" means something happened. Not that it might.
 
 ## Considered options
 
-**Monolith, extract on pain** *(chosen)* — Boundaries derived from evidence. Fastest to
-a working product. Costs: a period of genuinely ugly code, and the risk that "extract
-later" becomes "never," leaving a ball of mud. Mitigated by the fact that there's one
-developer and no coordination cost to refactoring.
+**Monolith plus the one proven runtime package** *(chosen)* — Keeps speculative domain
+boundaries out while enforcing the dependency direction that the POC and product thesis
+now justify. Costs: package/API design overhead arrives in increment 4 rather than after
+the app-local implementation.
 
 **The draft's seven packages up front** — Clean from commit one, enforced dependency
 direction, UI provably can't import tool implementations. Rejected: it commits to a
@@ -58,14 +62,15 @@ against it, we're declining to decide for it.
 
 ## Consequences
 
-**Good.** Product code in increment 3, not increment 8. Boundaries, when they come,
-answer real questions. Refactoring is cheap now and stays cheap while there's one
-developer.
+**Good.** Product code arrived before package design, so the one extracted boundary
+answers measured questions. The compiler will enforce that the reusable runtime cannot
+reach into app UI, credentials or storage.
 
-**Bad.** The code will get ugly before it gets extracted, and it may get ugly enough
-that extraction is a real project rather than a move. There's no compiler-enforced
-guardrail against the UI reaching into things it shouldn't — the discipline is
-convention only, and conventions lose to deadlines.
+**Bad.** Increment 4 must design a public package API while integrating the first
+durable task. Moving app conveniences across the boundary now requires explicit
+protocols instead of direct access.
 
-**Watch for.** Build times over ~30s, a test that can't be written without a boundary,
-or a second developer. Any of those makes this ADR due for supersession.
+**Watch for.** Pressure to move app-specific state or UI conveniences into the runtime
+package, or to split the package into a graph of speculative modules. Build times over
+~30s, a test that cannot be written without another boundary, real reuse, or a second
+developer are evidence to revisit this ADR; neatness alone is not.

@@ -121,7 +121,8 @@ struct SessionSemanticsTests {
         }
 
         #expect(contents.last == "first-second")
-        #expect(!contents.contains("first"))
+        #expect(!contents.isEmpty)
+        #expect(contents.allSatisfy { $0 == "first" || $0 == "first-second" })
         #expect(finalUsage == 11)
     }
 

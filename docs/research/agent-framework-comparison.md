@@ -576,9 +576,9 @@ while the specific Swift agent SDK considered in ADR-0006,
 That is both an opportunity and a warning: there is room for a good native runtime,
 but not yet evidence of a large framework market independent of Apple.
 
-### Recommended objectives for a future AgentKit
+### Recommended objectives for the native Swift runtime package
 
-If the app-local boundary proves reusable and is extracted, the package should aim to:
+The accepted middle-layer SPM package should aim to:
 
 - make the simple case one `Agent.run` call while exposing every event and state
   transition for advanced hosts;
@@ -604,8 +604,8 @@ If the app-local boundary proves reusable and is extracted, the package should a
 - Do not bundle a provider catalog, RAG stack, vector database, or generic memory by
   default.
 - Do not flatten provider-exclusive capabilities for the appearance of neutrality.
-- Do not extract from the monolith until at least two app increments prove the boundary
-  and a second consumer or independent testing benefit makes the package pay rent.
+- Do not split the accepted runtime into additional packages until a measured build,
+  testability or reuse problem proves another boundary.
 
 ---
 

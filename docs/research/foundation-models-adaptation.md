@@ -5,16 +5,16 @@ APIs should replace or reshape the proposed Work Agent loop. Evidence comes from
 Apple's WWDC26 material and the public Swift interfaces shipped in Xcode 27 beta 1
 (`27A5194q`) and beta 3 (`27A5218g`, macOS 27.0 SDK), inspected locally on 2026-07-18.
 
-This is decision input, not an accepted change to ADR-0006. It does challenge one of
-that ADR's premises: Work Agent no longer needs to wait for Anthropic or Google to ship
-packages to use Apple's abstraction. The app can make its existing HTTP adapters
-conform to Apple's public `LanguageModel`/`LanguageModelExecutor` protocols itself.
+This research and its POC supplied the evidence for the accepted ADR-0006 revision.
+Work Agent does not need to wait for Anthropic or Google to ship packages to use
+Apple's abstraction: its existing HTTP adapters can conform to Apple's public
+`LanguageModel`/`LanguageModelExecutor` protocols directly.
 
 ---
 
 ## Recommendation
 
-**Recommend the hybrid. Every bounded architecture gate in this POC now passes.**
+**Accepted: the hybrid. Every bounded architecture gate in this POC passes.**
 The matching beta-3 SDK/runtime passes the real two-request Apple session/tool cycle;
 deterministic probes establish cancellation, retry, tool-error, concurrency,
 stream-observation and reconstructed model-switch behavior; and the two real executor
@@ -41,11 +41,10 @@ tested against **three live providers** (DeepSeek, Google, and Anthropic). Each 
 completes a streamed two-request tool cycle through `LanguageModelSession`; together
 the cases cover signed reasoning/metadata round-trip and a model switch.
 
-Adoption would make macOS 27 an architectural minimum rather than an incidental project
-setting. PRODUCT.md deliberately leaves the minimum OS undecided, and Toni has not yet
-made that product decision. Therefore ADR-0006 remains the accepted implementation
-decision until Toni explicitly accepts macOS 27 and the hybrid; if he does, update the
-ADR and affected plans before increment 4 rather than building the old custom loop.
+Toni accepted macOS 27 as the architectural minimum and the native runtime as an SPM
+package above Foundation Models: "we'll have three layers." ADR-0006, ADR-0002 and the
+implementation plans now encode that decision; increment 4 must not build the old
+custom transcript/basic loop.
 
 ---
 
@@ -81,9 +80,8 @@ identifies Xcode 27 beta 3 as build `27A5218g` and macOS 27 beta 3 v2 as
 `26A5378n`; that is the pairing used for the passing rerun.
 
 The current project already has `MACOSX_DEPLOYMENT_TARGET = 27.0`, so the prototype
-has no immediate deployment-target obstacle. PRODUCT.md still lists minimum macOS as
-an open product decision; making Foundation Models foundational would turn macOS 27
-from an incidental project setting into an architectural requirement.
+has no deployment-target obstacle. NFR-009 makes that existing setting the accepted
+architectural minimum rather than an incidental template value.
 
 ---
 
@@ -225,40 +223,43 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 |---|---|---|---|---|
 | **A. Ignore Foundation Models** | Build ADR-0006 exactly as proposed | Maximum control; can target older macOS | Duplicates Apple's transcript, schema, session loop, token counting, typed output, dynamic context; isolates future model packages | **Not recommended** unless the POC exposes a blocker or minimum macOS drops below 27. |
 | **B. Add Apple as one provider** | Keep custom loop; wrap SystemLanguageModel/PCC behind `ChatProvider` | Lowest migration risk; adds Apple models | Gains almost none of the new neutral ecosystem; two transcript/tool systems remain | **Useful fallback**, not the best architecture. |
-| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a versioned transcript archive and real executor conformance proof | **Preferred target.** Basic and deterministic semantics pass with explicit host-owned boundaries; live provider-through-session proof remains. |
+| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a versioned transcript archive and real executor conformance proof | **Chosen.** Deterministic semantics, three live provider/session cycles and provider switching pass. |
 | **D. Make Foundation Models the whole runtime** | App stores Apple transcript and relies on session/profile for orchestration | Least custom code | A Codable transcript still does not provide durable checkpoints, restart-safe interrupts, effect policy, attempt identity, or Work Agent trace guarantees | **Reject.** It is an intelligence session, not the product's task runtime. |
 
 ---
 
-## Proposed hybrid boundaries
+## Accepted three-layer boundary
 
 ```text
 Work Agent app
-  TaskCoordinator actor
-    RunPolicy / checkpoint / interrupt / failover / trace
-    RunJournal (append-only execution truth)
-    TranscriptArchive (versioned wrapper around Codable Apple Transcript)
-    Foundation Models LanguageModelSession
-      DynamicProfile: active model + tools + instructions + history transform
-      WorkAgentToolBridge → ToolRunner → native/MCP tools
-      OpenAICompatibleLanguageModel.Executor → existing HTTP/SSE parser
-      AnthropicLanguageModel.Executor → existing HTTP/SSE parser
+  UI / credentials / catalog / app task storage / native tool implementations
+    ↓
+Native Swift agent-runtime SPM package
+  TaskCoordinator / RunPolicy / checkpoint / interrupt / failover / trace
+  RunJournal (append-only execution truth)
+  TranscriptArchive (versioned wrapper around Codable Apple Transcript)
+  tool host and provider executors
+    ↓
+Foundation Models LanguageModelSession
+  DynamicProfile: active model + tools + instructions + history transform
+  WorkAgentToolBridge → ToolRunner → native/MCP tools
+  OpenAICompatibleLanguageModel.Executor → existing HTTP/SSE parser
+  AnthropicLanguageModel.Executor → existing HTTP/SSE parser
 ```
 
-This boundary changes the future AgentKit thesis. A package extracted later should not
-compete with Foundation Models' `LanguageModelSession`. It should be a **durable agent
-runtime for Foundation Models sessions** plus bridges for richer tools, persistence,
-policy, traces, and evaluation.
+The middle package does not compete with Foundation Models' `LanguageModelSession`. It
+is a **durable agent runtime for Foundation Models sessions** plus bridges for richer
+tools, persistence, policy, traces and evaluation.
 
 That is sharper than “Pydantic AI for Swift”: Apple supplies the language-model SDK;
-AgentKit supplies the long-running work semantics native apps need.
+the native runtime package supplies the long-running work semantics native apps need.
 
 ---
 
-## POC gates before changing ADR-0006
+## POC gates used to change ADR-0006
 
-One short spike should answer these with code and recorded fixtures. A failed gate is
-evidence to retain or narrow the custom layer, not something to hand-wave.
+The spike answered these with code and recorded fixtures. A failed gate would have been
+evidence to retain or narrow the custom layer; the bounded gates passed.
 
 ### Provider executor gates
 
@@ -644,10 +645,9 @@ independent set of provider adapters after implementation.
 
 ---
 
-## Specific plan changes if the hybrid is accepted
+## Required plan changes under the accepted hybrid
 
-These would require Toni's explicit decision and an ADR-0006 update in the same doc
-increment; they are not applied by this research.
+Toni made the decision; ADR-0006 and the implementation plans apply these changes.
 
 1. Replace `AgentMessage` as the live session type with `Transcript`; persist it in a
    versioned `TranscriptArchive` and keep execution facts in a separate `RunJournal`.
@@ -709,5 +709,5 @@ The retained live-executor gate passes, so the architectural center should move 
 
 The matching seed executes the loop, the deterministic semantics are measured, all
 three live providers pass through Apple executors, and cross-provider reconstruction
-succeeds. The only remaining adoption gate is Toni's explicit minimum-macOS/product
-decision; the technical POC supports revising ADR-0006 to the hybrid.
+succeeds. Toni resolved the remaining product gate by accepting macOS 27 and the
+three-layer app → Swift SPM runtime → Foundation Models architecture.

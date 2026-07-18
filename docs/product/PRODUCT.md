@@ -89,7 +89,7 @@ we've failed.
 
 ## 3. What it is
 
-A native macOS application that:
+A native macOS 27-or-later application that:
 
 - runs agent orchestration **locally**, on the user's Mac;
 - talks to **whatever model the user chose**, via an API key they own — from a curated
@@ -144,8 +144,6 @@ Explicit, so they don't get smuggled in:
 These are unresolved and blocking nothing yet. They get answered before the increment
 that depends on them.
 
-- **Minimum macOS version.** 26 buys modern SwiftUI and Foundation Models with no
-  availability plumbing; 15 broadens reach at a real cost. Undecided.
 - **Background execution.** Does work survive the window closing in v1? Deciding "yes"
   later costs a painful retrofit; deciding "yes" now costs XPC and a LaunchAgent before
   the product is validated.
@@ -153,8 +151,6 @@ that depends on them.
   have a working app that talks to an LLM and a set of tools we've actually tested — so
   the choice is made against what the thing demonstrably does, not against imagination.
   The risk this carries, and what bounds it, is in ROADMAP.md.
-- **What "neutral" means mechanically.** Adapter per provider, OpenAI-compatible
-  endpoint, or a proxy layer. Subject of the runtime research spike and ADR-0006.
 - **OpenAI subscription sign-in (FR-067).** Toni asked for it. Anthropic's equivalent is
   explicitly banned; OpenAI's is undocumented — neither permitted nor prohibited. The
   "OpenAI explicitly supports this" claim comes from OpenClaw's docs and cites nothing.

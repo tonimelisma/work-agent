@@ -75,8 +75,10 @@ Hardened Runtime stays on for notarization.
 
 Research spike; done 2026-07-18. Live tool-calling POCs in
 [research/agent-loop-runtimes.md](../research/agent-loop-runtimes.md);
-[ADR-0006](../decisions/0006-native-swift-agent-loop.md) **accepted**: native Swift
-loop on the ADR-0007 adapters, with a future AgentKit-package extraction path.
+[ADR-0006](../decisions/0006-native-swift-agent-loop.md) **accepted and revised after
+the macOS 27 POC**: Apple Foundation Models supplies the intelligence session, a native
+Swift SPM package supplies durable agent runtime semantics, and the Work Agent app
+supplies product state, UI, credentials and Mac capabilities.
 
 The question: **what runs the agent loop, given that model neutrality is
 non-negotiable?** Neutrality eliminates the Claude Agent SDK and Claude Code outright —
@@ -98,15 +100,20 @@ goes to ADR-0006.
 **Done when:** ADR-0006 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
-## Increment 4 — A working app that talks to an LLM
+## Increment 4 — The three-layer runtime and a durable task
 
-The agent loop from ADR-0006, in the monolith, against a provider configured in
-increment 2. A durable task the user can create and watch. No tools yet.
+Create the one deliberate SPM boundary from ADR-0002: a native Swift agent-runtime
+package built on macOS 27 Foundation Models. Adapt the two shipped provider transports
+to `LanguageModelExecutor`, drive `LanguageModelSession` from a durable coordinator,
+and integrate it into the app against a provider configured in increment 2. The app
+owns task persistence and presentation; the package owns provider-neutral execution.
+No general work tools yet.
 
-**Done when:** a real model call happens, its result lands in a task that survives an
-app restart, and the task's status is observable while it runs. The task model has no
-requirements yet — its FR IDs get written at this increment's DOR, from whatever Toni
-actually specifies.
+**Done when:** a real model call crosses all three layers, its result lands in a task
+that survives an app restart, and the task's status is observable while it runs. The
+package has no dependency on the app target or SwiftUI, its deterministic conformance
+suite passes, and the task model's FR IDs are written at this increment's DOR from
+whatever Toni actually specifies.
 
 ## Increment 5 — First tools, tested
 
@@ -154,9 +161,7 @@ written.
 |---|---|
 | **The real first task** | Increment 7 — once a working app talks to an LLM and has tools we've tested. Picked from actual work Toni does. |
 | **Which tools to build first** | Decided — see below and [docs/plans/tool-architecture.md](../plans/tool-architecture.md). |
-| **Minimum macOS version** | The first increment that wants an API we'd have to gate. Currently nothing does. |
 | **Background execution** (LaunchAgent, XPC) | The product is validated. Retrofit cost is real and acknowledged; paying it before we know the product is worse. |
-| **SPM package extraction** | We know where the seams are. (ADR-0002) |
 | **Connections** (Gmail, Drive, M365) | A real task needs one. |
 | **Native app control** (Accessibility, screen capture) | Structured APIs demonstrably fall short. ADR-0003 keeps this possible. |
 | **Sandboxed code execution** | Something needs to run generated code — shell/exec stays out of the tool set until an isolation ADR exists. |

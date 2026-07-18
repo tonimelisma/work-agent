@@ -17,12 +17,10 @@ retrofit a policy change), but nothing enforces anything yet.
 
 **Update 2026-07-18:** the Foundation Models adaptation POC now passes all bounded
 technical gates, including live Apple-session cycles for DeepSeek, Google and
-Anthropic and a live provider switch. ADR-0006 is under reconsideration because the
-hybrid would make macOS 27 a real product minimum; Toni has not decided that yet. Do
-not implement this plan's custom wire-facing `Tool`/loop seam until that decision is
-resolved. If the hybrid is accepted, the host-owned policy contract below remains,
-but it is bridged to `FoundationModels.Tool`/`GenerationSchema`, while provider
-serialization moves into `LanguageModelExecutor` conformances. See
+Anthropic and a live provider switch. Toni accepted the three-layer hybrid and macOS
+27 minimum: the host-owned policy contract below belongs in the native Swift runtime
+SPM package, bridged to `FoundationModels.Tool`/`GenerationSchema`, while provider
+serialization belongs in `LanguageModelExecutor` conformances. See ADR-0006 and
 [foundation-models-adaptation.md](../research/foundation-models-adaptation.md).
 
 Grounding: [agent-harness-builtin-tools.md](../research/agent-harness-builtin-tools.md)
@@ -61,9 +59,10 @@ axes as separate concepts** for when shell/exec eventually lands.
 
 ## 2. The core abstraction
 
-One protocol, everything is an instance of it — built-ins and MCP tools alike. New
-Swift files in the monolith (ADR-0002: no package extraction yet), grouped under
-`Work Agent/Tools/`.
+One host protocol, everything is an instance of it — built-ins and MCP tools alike.
+The protocol, runner, effect/resource metadata and Apple bridge live in the native
+Swift runtime SPM package. Product-specific tool implementations and authorization
+policy stay in the Work Agent app and conform through the package's public API.
 
 ```swift
 /// A capability the agent can invoke. Built-in or remote (MCP) — the loop can't tell.
@@ -101,13 +100,13 @@ will come later," but the field exists from day one so retrofitting is a policy
 change, not a refactor), and no provider types anywhere in `Tools/` (the compile-time
 enforcement of FR-001: `Tools/` must not import the provider layer).
 
-**The package boundary (decided with ADR-0006).** These layers are written as if
-they were already a Pydantic-AI-style SPM package: the conversation model + extras
-bag, `ChatProvider` adapters, `Tool`/`ToolSpec`/`ToolRunner`, the loop, and the MCP
-client depend only on each other and Foundation — never on the catalog, Keychain,
-trace store, or UI, which the app injects via protocols (`TraceRecorder` is the
-pattern). Extraction to a real package is deferred per ADR-0002 and becomes a
-mechanical move when it earns it.
+**The package boundary (decided with ADR-0006).** `Tool`/`ToolSpec`/`ToolRunner`, the
+Foundation Models bridge, runtime policy and the MCP client depend only on the runtime
+package and Apple frameworks — never on the app's catalog, Keychain, task store or UI.
+The app injects those concerns through protocols (`TraceRecorder` is the pattern).
+Foundation Models `Transcript` and `GenerationSchema` replace the older proposed
+conversation/extras/schema lookalikes; provider-specific state stays in Apple transcript
+metadata and typed reasoning signatures with explicit ownership on failover.
 
 ### The runner: where the context window is defended
 
@@ -152,22 +151,19 @@ changes.
 
 ### The provider seam
 
-The following describes the currently accepted ADR-0006 design. The passing
-Foundation Models POC establishes a preferred replacement if the hybrid is accepted:
-`LanguageModelSession` owns the basic model/tool/model cycle, the two shipped
+The accepted ADR-0006 design makes `LanguageModelSession` own the basic
+model/tool/model cycle. The two shipped
 transports conform to `LanguageModelExecutor`, and a wrapper exposes each richer host
 tool as `FoundationModels.Tool`. The host runner still owns trace-before-budget,
 timeouts, recoverable error output, effects, idempotency and resource scheduling;
 Apple's tool protocol is not the authorization or durability boundary.
 
-The loop (ADR-0006's subject) holds neutral types; each adapter owns both directions:
-`[ToolSpec] → wire format` (Anthropic `tools`/`input_schema`; OpenAI `tools[].function`;
-Gemini `functionDeclarations`; the nine OpenAI-compatibles share one encoder) and
-`wire response → [ToolCall]` (Anthropic `tool_use` blocks; OpenAI `tool_calls` +
-JSON-string arguments; parallel calls normalized to an ordered list). Tool *results*
-go back per-vendor the same way (`tool_result` blocks vs `role:"tool"` messages).
-This is exactly where increment 6's cold-provider test bites, which is why the types
-must be right before the tools are many.
+Each executor owns both directions between Apple's `Transcript`/tool definitions and
+its wire format: Anthropic `tools`/`input_schema` and `tool_use` blocks; OpenAI
+`tools[].function`, `tool_calls` and tool-role messages. Tool results return through
+Apple transcript entries, not an app-owned message hierarchy. This is exactly where
+increment 6's cold-provider test bites, which is why the conformance fixtures must be
+right before the tools are many.
 
 ## 3. The built-in tools, one by one
 

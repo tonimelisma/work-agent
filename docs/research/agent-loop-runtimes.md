@@ -15,7 +15,7 @@ For the deeper developer-facing comparison of current framework features, produc
 runtime practices, and what could justify a native Swift AgentKit beyond the loop,
 see [agent-framework-comparison.md](agent-framework-comparison.md).
 The macOS 27 Foundation Models APIs materially change the native option; the proposed
-hybrid and the POC gates required before revisiting ADR-0006 are in
+hybrid and the POC evidence that revised ADR-0006 are in
 [foundation-models-adaptation.md](foundation-models-adaptation.md).
 
 ---
@@ -120,21 +120,16 @@ solo-sized in Swift, and it's MIT if we want to compare notes on delta accumulat
 `.reasoning` entries, streaming channel with `toolCallDelta`). Apple's own neutral
 abstraction — architecturally the closest thing to what we're building, and
 "Anthropic and Google will soon extend the Foundation Models framework with Swift
-packages of their own." Not adoptable now: **requires macOS 27** (would decide the
-open min-OS question in its most aggressive form), the vendor packages are
-"soon"-ware, we'd depend on each vendor shipping and maintaining their Swift
-package on Apple's cadence, and eleven providers won't all show up. Worth watching;
-its `Transcript` design is worth imitating. Revisit when the curated vendors
-actually ship packages.
+packages of their own." The later POC proved Work Agent can adopt it without waiting
+for those packages by implementing executors over the two existing transports. It
+requires macOS 27, now accepted in NFR-009, and provider packages still cannot be the
+coverage plan for all eleven curated providers.
 
-## Conclusion (input to ADR-0006)
+## Conclusion
 
-The custom native Swift loop wins on every constraint that's ours specifically:
-neutrality with full capability exposure (the extras bag), FR-006's
-provider-swapping conversation model, continuity with shipped adapters, zero new
-runtime in the bundle, and Toni's stated preference. The live probes remove the
-main uncertainty — tool calling demonstrably works over both existing adapter
-formats, round-trip included, and the failure modes discovered (quirks 1–3) are all
-things a *thin* layer handles better than a thick one. The framework options add a
-runtime and a process boundary to solve orchestration problems we don't have yet,
-while handling worse the provider-state problems we demonstrably do have.
+The original evidence correctly favored native Swift and the two shipped wire formats,
+but its custom-loop conclusion was superseded by the later Foundation Models POC.
+ADR-0006 now keeps the native and neutrality conclusions while using Apple for the
+intelligence session and a Swift SPM package for durable Work Agent semantics. The
+opaque provider-state findings remain essential and are represented through Apple
+transcript metadata/signatures with ownership-aware failover.

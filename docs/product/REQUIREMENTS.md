@@ -14,7 +14,7 @@ testable: *The system shall…* (always), *While/When/Where/If…* (conditional)
 `FR` = functional, `NFR` = non-functional. **IDs are permanent and never reused.**
 A dropped requirement is deleted from this doc — no tombstones — and git history is
 the archive. So a number is never handed out twice, the next free IDs are tracked
-here: **next FR: FR-071 · next NFR: NFR-009.**
+here: **next FR: FR-071 · next NFR: NFR-010.**
 
 **Status:** `Specified` (agreed, not built) · `Implemented` (built, tested, traced).
 
@@ -145,6 +145,7 @@ exercised this increment (e.g. tool calls in FR-065 don't exist yet — only rea
 | **NFR-005** | Every requirement in this document shall be traceable to code and tests by its ID. | "numbering or coding for requirements and comments in code and test to link to specific requirements" | Specified |
 | **NFR-002** | Task state and history shall reside on the Mac. | "a local agent that does work on behalf of the user" | Specified |
 | **NFR-006** | The user interface shall remain responsive while a task is running. | inferred | Specified |
+| **NFR-009** | The system shall require macOS 27 or later and build its agent runtime on the macOS 27 Foundation Models APIs. | "Apple's new macOS 27 APIs" and "we'll have three layers" | Specified |
 
 ---
 

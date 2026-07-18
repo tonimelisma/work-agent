@@ -29,6 +29,17 @@ public enum FixtureParserError: LocalizedError, Equatable, Sendable {
     }
 }
 
+public enum ProviderStreamError: LocalizedError, Equatable, Sendable {
+    case event(provider: String, type: String?, message: String?)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .event(provider, type, message):
+            "\(provider) stream error \(type ?? "unknown"): \(message ?? "No message supplied")"
+        }
+    }
+}
+
 public enum OpenAICompatibleFixtureParser {
     public static func events(from lines: [String]) throws -> [ExecutorEvent] {
         var parser = OpenAICompatibleStreamParser()
@@ -143,6 +154,14 @@ public struct AnthropicStreamParser: Sendable {
         var events: [ExecutorEvent] = []
 
         switch type {
+        case "error":
+            let error = object["error"] as? [String: Any]
+            throw ProviderStreamError.event(
+                provider: "anthropic",
+                type: error?["type"] as? String,
+                message: error?["message"] as? String
+            )
+
         case "message_start":
             let message = object["message"] as? [String: Any]
             let usage = message?["usage"] as? [String: Any]

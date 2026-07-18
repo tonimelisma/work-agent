@@ -17,7 +17,7 @@ The app runs, streams chat from real providers, and stores keys in the Keychain.
 increment 2:
 
 An isolated `Experiments/FoundationModelsPOC/` Swift package also exists. It links the
-macOS 27 Foundation Models provider surface and has 19 offline tests for Apple
+macOS 27 Foundation Models provider surface and has 20 offline tests for Apple
 `Transcript` archival, provider stream parsing, strict schema conversion, a bridged
 Foundation Models tool, trace budgeting, metadata filtering, fixture path safety, and
 scripted session semantics. The semantics tests measure executor/tool cancellation,
@@ -34,8 +34,8 @@ foreign metadata removal. A scripted
 two model requests, one bridged tool call/output, reasoning signature, transcript
 archive replay, and usage. The earlier loader failure was an Xcode beta-1 SDK versus
 macOS beta-3 runtime ABI mismatch. The experiment is not production target membership
-and has not changed ADR-0006; changing the accepted runtime decision and making macOS
-27 a real minimum still require Toni's explicit decision.
+and is not the production runtime package. ADR-0006 now accepts its proven architecture:
+macOS 27 Foundation Models under a native Swift SPM runtime under the Work Agent app.
 
 ```
 Work Agent/
@@ -71,12 +71,12 @@ docs/                            specs
 | Language | Swift, MainActor-default isolation | Native macOS is the point |
 | UI | SwiftUI (`@Observable`) | — |
 | Tests | swift-testing | ADR-0004 |
-| Structure | Single app target, monolith | ADR-0002 |
+| Structure | Single app target today; one agent-runtime SPM package is the next accepted boundary | ADR-0002, ADR-0006 |
 | Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | ADR-0003 |
 | Provider chat | Two adapters behind `ChatProvider` | ADR-0007 |
 | Model registry | models.dev, bundled + refreshed | ADR-0005 |
-| Agent runtime (tools/loop) | **Undecided** | ADR-0006, deferred |
-| Min macOS | **Undecided** (project targets 27.0 by template default) | Nothing forces it yet |
+| Agent runtime (tools/loop) | Foundation Models intelligence session inside a Work Agent-owned durable Swift runtime | ADR-0006 |
+| Min macOS | **27.0** | NFR-009, ADR-0006 |
 
 **App Sandbox is off.** The Xcode template enabled it; it blocked all outbound network,
 which is fatal for an app whose whole job is calling provider APIs. Disabling it realizes
@@ -93,11 +93,13 @@ provider id (ADR-0007). The UI and view models never know which adapter answered
 
 Data flows one way: `ProviderStore` (what's configured, key in Keychain) and
 `RegistryLoader` (what models exist) feed the views; `ChatViewModel` resolves the selected
-model to an adapter, streams chunks, and persists the conversation. No package boundaries
-yet — they earn their existence by hurting first.
+model to an adapter, streams chunks, and persists the conversation. The production app
+still has no package dependency at this commit; the accepted next boundary is the single
+agent-runtime SPM package in ADR-0006, justified by the completed conformance POC.
 
-The agent loop, tools, and orchestration are **not** here — that's ADR-0006. What exists
-is plain streaming chat.
+The agent runtime, tools, and durable coordinator are **not implemented** yet. What
+exists in the app is plain streaming chat; the isolated POC proves the substrate that
+increment 4 will turn into the package and app integration.
 
 ## Testing
 

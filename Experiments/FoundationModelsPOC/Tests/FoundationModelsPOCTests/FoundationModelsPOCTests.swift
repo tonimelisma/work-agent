@@ -158,6 +158,18 @@ func anthropicParserRejectsMissingToolIdentity() {
     }
 }
 
+@Test("Anthropic HTTP-200 stream errors propagate as typed failures")
+func anthropicParserPropagatesStreamErrors() {
+    let line = #"data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#
+    #expect(throws: ProviderStreamError.event(
+        provider: "anthropic",
+        type: "overloaded_error",
+        message: "Overloaded"
+    )) {
+        try AnthropicFixtureParser.events(from: [line])
+    }
+}
+
 @available(macOS 27.0, *)
 @Test("Representative MCP object schema converts to Apple's GenerationSchema")
 func schemaBridgeBuildsGenerationSchema() throws {
