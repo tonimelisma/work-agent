@@ -361,7 +361,7 @@ runtime around that intelligence session:
 | Reliability | Cancellation propagation, transcript revert/preserve policy, concurrent tools; tool errors terminate | Retry, correction, fallback, circuit breaker, limits | Use transcript reversion for attempt atomicity; add retry policy, model-visible corrective failures, resource limits, indeterminate side-effect recovery, fallback and run policies. |
 | Workflow composition | Dynamic profiles, skills and agent patterns | Graphs, flows, handoffs, teams | Ordinary Swift control flow first; optional typed workflow/handoff layer only after real need. |
 | Observability | Transcript hooks, usage, Instruments; response snapshots may coalesce executor events | Spans, studios, telemetry exporters | Capture lossless events at the executor/host boundary, then emit structured local run events and a user-legible trace; keep optional telemetry export separate. |
-| Evaluation | Foundation Models Evaluations | Datasets, trajectory assertions, replay | Cross-provider fixtures, scripted executors, fault injection, safety/effect assertions and native performance metrics. |
+| Evaluation | `LanguageModelFeedback` only — no eval API in the macOS 27 SDK (verified 2026-07-18) | Datasets, trajectory assertions, replay | Cross-provider fixtures, scripted executors, fault injection, safety/effect assertions and native performance metrics. |
 | Integrations | Apple/system tools and provider packages | MCP, toolkits, plugins, RAG connectors | MCP/toolset/skill adapters and native macOS capabilities, with no required cloud control plane. |
 | Security | Framework guardrails and confirmation patterns | Auth scopes, policy middleware, sandboxes | Secret/data-egress policy, provenance, indirect-prompt-injection boundaries, least privilege and host-owned authorization. |
 
@@ -569,12 +569,14 @@ The concrete adaptation options, local Xcode 27 API evidence, and recommended hy
 are analyzed separately in
 [foundation-models-adaptation.md](foundation-models-adaptation.md).
 
-The market is currently thin. On 2026-07-18, the official
-[MCP Swift SDK](https://github.com/modelcontextprotocol/swift-sdk) had 1,445 stars,
-while the specific Swift agent SDK considered in ADR-0006,
-[`open-agent-sdk-swift`](https://github.com/terryso/open-agent-sdk-swift), had 26.
-That is both an opportunity and a warning: there is room for a good native runtime,
-but not yet evidence of a large framework market independent of Apple.
+The market is currently thin above the model layer, but crowding fast *at* it. On
+2026-07-18: the official [MCP Swift SDK](https://github.com/modelcontextprotocol/swift-sdk)
+had 1,445 stars; [`open-agent-sdk-swift`](https://github.com/terryso/open-agent-sdk-swift)
+26; Hugging Face's [`AnyLanguageModel`](https://github.com/huggingface/AnyLanguageModel)
+— a drop-in FM-API-compatible layer on iOS 17+/macOS 14+ with nine backends — 907;
+and Anthropic/Google had shipped v0.1 FM provider packages. The model-access layer
+is being filled by Apple, vendors, and HF; no one is building the durable runtime
+above it. See [apple-llm-stack-second-opinion.md](apple-llm-stack-second-opinion.md).
 
 ### Recommended objectives for the native Swift runtime package
 

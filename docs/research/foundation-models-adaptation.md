@@ -623,7 +623,7 @@ remain untested because they are implementation follow-ups or outside this decis
 | `Generable` structured final outputs beyond tool arguments | Compile-time surface linked; no live output matrix | Add conformance tests when a product feature introduces typed final output. |
 | Images, attachments and custom transcript segments | Not executed | Current agent-loop increment is text/tool work. Each new modality needs provider-specific contract tests. |
 | Exact token-count APIs, prewarming, on-device and PCC models | Usage events tested; other paths not executed | They optimize or add models; they do not change the executor/session ownership boundary. |
-| Foundation Models Evaluations and Instruments integration | Researched, not executed | Work Agent still needs provider-neutral trajectory/effect evals and local trace truth. Add Apple exporters as integrations. |
+| Feedback and Instruments integration | Not executed; **no evaluations API exists in the macOS 27 SDK** (verified 2026-07-18 — the framework ships only `LanguageModelFeedback`) | The eval gap is entirely Work Agent's to fill: provider-neutral trajectory/effect evals and local trace truth. |
 | Refusal, guardrail, context-window and concurrent-session error variants | Interface inspected; no fault matrix | Production adapters need typed error fixtures before shipping, but the coordinator already owns recovery and presentation. |
 | Every JSON Schema/MCP dialect feature | Strict representative subset measured | Unsupported keywords fail with path/keyword instead of being lost. Expand against the actual planned-tool and MCP corpus during implementation. |
 
@@ -700,9 +700,14 @@ Toni made the decision; ADR-0006 and the implementation plans apply these change
 - **Open-source timing.** Apple announced the framework is going open source, but the
   OS-shipped API remains the dependable artifact inspected here. Do not plan around
   unreleased package internals.
-- **Provider package coverage.** Anthropic and Google packages may reduce adapter work,
-  but Work Agent's eleven-provider promise cannot depend on their schedule. Our two
-  executor conformances remain necessary initially.
+- **Provider package coverage.** Anthropic's
+  [ClaudeForFoundationModels](https://github.com/anthropics/ClaudeForFoundationModels)
+  and a Google Gemini equivalent shipped (checked 2026-07-18: v0.1, OS-27-beta-only,
+  best-effort, closed to contributions; Anthropic's production auth assumes a proxy
+  backend rather than BYOK keys). They cover 2 of 11 curated providers and mismatch
+  our credential model, so our two executor conformances remain necessary; the vendor
+  packages serve as conformance references. See
+  [apple-llm-stack-second-opinion.md](apple-llm-stack-second-opinion.md).
 - **Schema mismatch.** `GenerationSchema` is not arbitrary JSON Schema. MCP is the
   highest-risk bridge and needs a real corpus test.
 - **Apple-controlled loop semantics.** If there is no supported way to intercept and
