@@ -17,9 +17,15 @@ The app runs, streams chat from real providers, and stores keys in the Keychain.
 increment 2:
 
 An isolated `Experiments/FoundationModelsPOC/` Swift package also exists. It links the
-macOS 27 Foundation Models provider surface and has offline tests for the prospective
-persistence, SSE-fragment, and schema boundaries. It is not production target membership
-and has not changed the agent-runtime decision; live provider executor gates are pending.
+macOS 27 Foundation Models provider surface and has 12 offline tests for Apple
+`Transcript` archival, provider stream parsing, strict schema conversion, a bridged
+Foundation Models tool, trace budgeting, metadata filtering, and fixture path safety.
+Its secret-safe live script has completed direct two-request tool cycles against
+DeepSeek, Google, and Anthropic using the repository-root `.env`. A real scripted
+`LanguageModelExecutor`/`LanguageModelSession` cycle compiles but cannot reach `main` on
+the current machine because the system FoundationModels framework lacks a channel
+symbol exported by the Xcode 27 SDK. The experiment is not production target membership
+and the failed runtime gate leaves ADR-0006 unchanged.
 
 ```
 Work Agent/

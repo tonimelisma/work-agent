@@ -14,14 +14,18 @@ conform to Apple's public `LanguageModel`/`LanguageModelExecutor` protocols itse
 
 ## Recommendation
 
-**Adapt, but do not hand the whole runtime to Apple.** The best target is a hybrid:
+**Aim at a hybrid, but do not adopt it on the currently installed seed.** The POC's
+Apple runtime gate fails before execution; ADR-0006 therefore remains the current
+decision. If a matching seed later passes the retained session-semantics gates, the
+best target is:
 
 - Foundation Models supplies the in-memory model/session vocabulary and model/tool
   execution substrate on macOS 27: `LanguageModel`, `LanguageModelExecutor`,
   `LanguageModelSession`, `Transcript`, `Tool`, generation schemas, token counts,
   dynamic profiles, and response usage.
-- Work Agent owns the durable task runtime around it: canonical Codable state,
-  checkpoints, interrupts/approvals, retry and idempotency policy, effect-aware tool
+- Work Agent owns the durable task runtime around it: a versioned archive of Apple's
+  Codable transcript plus an execution journal, checkpoints, interrupts/approvals,
+  retry and idempotency policy, effect-aware tool
   execution, trace storage, provider failover policy, error presentation, and evals.
 - Work Agent's two existing wire adapters become `LanguageModelExecutor`
   implementations rather than parallel provider APIs. The existing parsing work is
@@ -81,7 +85,7 @@ from an incidental project setting into an architectural requirement.
 | `AgentMessage` / content blocks | `Transcript.Entry` and `Transcript.Segment` | Prefer Apple's in-memory representation if the POC preserves every provider round-trip. |
 | `.text` | `.response`/`.prompt` with text segments | Direct mapping. |
 | `.reasoning` | `Transcript.Reasoning` | Direct mapping; Apple includes segments, signature, and metadata. |
-| `ProviderExtras` | entry metadata, reasoning signature, tool-call metadata, or a custom segment | Replace the one catch-all bag with typed Apple locations plus a provider-namespaced metadata convention. Keep an app-owned Codable equivalent for persistence. |
+| `ProviderExtras` | entry metadata, reasoning signature, tool-call metadata, or a custom segment | Replace the one catch-all bag with typed Apple locations plus a provider-namespaced metadata convention. Archive Apple's Codable transcript and filter metadata when crossing provider boundaries. |
 | `ToolSpec` | `Transcript.ToolDefinition` + `GenerationSchema` | Bridge the canonical supported subset; contract-test conversions. |
 | `Tool` | `FoundationModels.Tool<Arguments, Output>` | Wrap Work Agent tools. Do not discard host context, effects, budgets, or tracing. |
 | `ToolCapableProvider` | `LanguageModel` + `LanguageModelExecutor` | Make the existing OpenAI-compatible and Anthropic transports conform. |
@@ -154,14 +158,18 @@ building macros or another reflection system prematurely.
 
 ### Durable canonical state
 
-The inspected macOS 27 `Transcript` conforms to `Sendable`, `Equatable`, and
-`RandomAccessCollection`, but **not `Codable`**. Its existential metadata, custom
-segments, and native image attachments make generic persistence non-trivial.
+The inspected macOS 27 `Transcript` is Codable as well as `Sendable` and
+`RandomAccessCollection`. The POC round-trips it through canonical JSON, including
+reasoning signatures and provider metadata. The decoded value re-encodes identically,
+although the beta framework's `Equatable` implementation does not consider the
+metadata round-trip equal; persistence tests therefore compare canonical encodings and
+semantics rather than relying on `==`.
 
-Work Agent therefore still needs a versioned, Codable task/checkpoint representation.
-It can map that representation to an Apple transcript for each live session. This is
-not needless duplication: one is the durable product record; the other is the active
-model-session view. The mapping and losslessness must be fixture-tested.
+Work Agent should version an archive around Apple's transcript rather than create a
+parallel message hierarchy. That archive is the durable model-context projection. A
+separate append-only run journal remains necessary for attempt, tool, side-effect,
+interrupt and checkpoint truth; those execution facts do not belong in a conversation
+transcript.
 
 ### Crash consistency and exact resume semantics
 
@@ -208,8 +216,8 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 |---|---|---|---|---|
 | **A. Ignore Foundation Models** | Build ADR-0006 exactly as proposed | Maximum control; can target older macOS | Duplicates Apple's transcript, schema, session loop, token counting, typed output, dynamic context; isolates future model packages | **Not recommended** unless the POC exposes a blocker or minimum macOS drops below 27. |
 | **B. Add Apple as one provider** | Keep custom loop; wrap SystemLanguageModel/PCC behind `ChatProvider` | Lowest migration risk; adds Apple models | Gains almost none of the new neutral ecosystem; two transcript/tool systems remain | **Useful fallback**, not the best architecture. |
-| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a durable transcript bridge and proof that session error/tool semantics are sufficient | **Recommended POC and likely target.** |
-| **D. Make Foundation Models the whole runtime** | App stores Apple transcript and relies on session/profile for orchestration | Least custom code | No generic Codable state, durable checkpoints, restart-safe interrupts, effect policy, or Work Agent trace guarantees | **Reject.** It is an intelligence session, not the product's task runtime. |
+| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a versioned transcript archive and proof that session error/tool semantics are sufficient | **Preferred target once a compatible runtime passes the harness.** |
+| **D. Make Foundation Models the whole runtime** | App stores Apple transcript and relies on session/profile for orchestration | Least custom code | A Codable transcript still does not provide durable checkpoints, restart-safe interrupts, effect policy, attempt identity, or Work Agent trace guarantees | **Reject.** It is an intelligence session, not the product's task runtime. |
 
 ---
 
@@ -219,9 +227,9 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 Work Agent app
   TaskCoordinator actor
     RunPolicy / checkpoint / interrupt / failover / trace
-    DurableAgentState (Codable, versioned, canonical)
-      ↕ lossless mapper
-    Foundation Models Transcript + LanguageModelSession
+    RunJournal (append-only execution truth)
+    TranscriptArchive (versioned wrapper around Codable Apple Transcript)
+    Foundation Models LanguageModelSession
       DynamicProfile: active model + tools + instructions + history transform
       WorkAgentToolBridge → ToolRunner → native/MCP tools
       OpenAICompatibleLanguageModel.Executor → existing HTTP/SSE parser
@@ -358,7 +366,7 @@ whether Apple permits the recoverable tool-error behavior Work Agent needs.
 
 ### 4. Capture and replay the two executor shapes
 
-For each live call, save a scrubbed fixture containing:
+When the Apple executor can run, save a scrubbed fixture containing:
 
 - the provider request body with credentials and user-specific content removed;
 - raw SSE `data` payloads in arrival order;
@@ -366,9 +374,12 @@ For each live call, save a scrubbed fixture containing:
 - the resulting Apple transcript entries; and
 - the second provider request that replays the reasoning/tool state.
 
-Fixture tests run without network or keys and assert exact IDs, source ordering,
-partial-argument accumulation, signatures/metadata, stop semantics, and usage. Do not
-record arbitrary response prose as a golden value; assert the structural trajectory.
+If the Apple runtime fails before a provider request, reconstruct minimal fixtures from
+verified provider wire shapes, label them as reconstructed, and do not misrepresent
+them as captured traffic. Fixture tests run without network or keys and assert exact
+IDs, source ordering, partial-argument accumulation, signatures/metadata, stop
+semantics, and usage. Do not record arbitrary response prose as a golden value; assert
+the structural trajectory.
 
 ### 5. Run three live round trips
 
@@ -431,29 +442,32 @@ only the captured fixtures to prove the evidence is reproducible without network
 ## Expected POC deliverable
 
 The deliverable is a **reproducible architecture decision package**, not a demo and not
-production agent code. It is complete only when the PR contains all of these:
+production agent code. A critical gate may produce a completed no-adopt decision; the
+deliverable must then preserve enough evidence to reproduce the blocker without
+pretending downstream gates ran. It contains:
 
 1. **Runnable experiment.** `Experiments/FoundationModelsPOC/` builds on a clean
    checkout and its offline suite passes with the documented command.
-2. **Scrubbed evidence.** Recorded DeepSeek, Google, and Anthropic fixtures cover both
-   executor formats and the second request of each tool cycle. No key or personal data
-   is present.
-3. **Automated results.** Fixture, persistence, cancellation/retry, tool bridge, model
-   switch, and schema tests correspond directly to every gate in the preceding
-   section.
-4. **Live-results matrix.** Provider/model, tool-call emission, tool execution,
-   reasoning/signature replay, second request, final response, cancellation, and
-   failover are marked pass/fail with the exact probe date. A failure includes the raw
-   structural symptom and fixture pointer.
+2. **Scrubbed evidence.** Credential-free fixtures cover the DeepSeek/Google OpenAI-
+   compatible and Anthropic stream structures. Each says whether it was captured or
+   reconstructed. No key or personal data is present.
+3. **Automated results.** Every executable fixture, transcript, tool and schema boundary
+   has a test. Session gates blocked by a loader/runtime failure are listed explicitly,
+   not inferred.
+4. **Live-results matrix.** Provider/model, tool-call emission, provider-state replay,
+   second request and final response are marked pass/fail with the probe date. Apple
+   session execution, cancellation and failover are separately marked passed, failed,
+   or blocked with the exact structural symptom.
 5. **Schema compatibility table.** Supported and unsupported Apple ↔ canonical/MCP
    schema features are recorded with the chosen fallback or blocker.
 6. **Measured code delta.** Report the experiment's non-test source lines and identify
-   which existing adapter code was reused. This tests the claim that Apple removes
-   meaningful loop code rather than merely moving it.
+   which existing adapter code was reused when the session can execute. A pre-main
+   loader failure means this comparison is not yet meaningful and must say so.
 7. **Decision update.** Add a results section to this research doc. If every critical
    gate passes, update ADR-0006 in place to the hybrid and revise the agent-loop/tool
-   plans in the same doc increment. If a critical gate fails, keep ADR-0006 and record
-   the precise boundary Apple could not satisfy. No ambiguous “promising” conclusion.
+   plans in the same doc increment. If a critical gate fails or is blocked, keep
+   ADR-0006 and record the precise boundary Apple could not satisfy. No ambiguous
+   “promising” conclusion.
 8. **Cleanup decision.** State whether the experiment package remains as a conformance
    harness, is folded into production tests during implementation, or is deleted after
    its fixtures/results are preserved. Do not leave an ownerless prototype.
@@ -464,36 +478,77 @@ hybrid to pass.
 
 ## POC results — 2026-07-18
 
-**Result: no adoption decision yet. ADR-0006 remains unchanged.** The isolated package at
-`Experiments/FoundationModelsPOC/` compiles against the macOS 27 Foundation Models
-provider surface and its offline gate passes. It records three useful boundary checks:
-a Codable durable transcript strips provider-only metadata on model switch; OpenAI
-tool-call argument fragments remain partial rather than being flattened; and unsupported
-JSON Schema keywords fail with their keyword and path.
+**Decision: do not adopt the Foundation Models session/executor substrate on the
+currently installed seed. ADR-0006 remains unchanged.** This is a completed no-adopt
+POC, not an ambiguous “promising” result. The architecture can be reconsidered after a
+matching macOS/Xcode seed runs the retained conformance harness.
 
-On 2026-07-18, with the repository-root `.env` sourced by the invoking shell (the
-existing local credential convention), live non-streaming two-request cycles passed for
-DeepSeek `deepseek-v4-pro`, Google `gemini-3.5-flash`, and Anthropic `claude-sonnet-5`.
-Every case observed tool-call emission, a local `read_fixture` result, a second request,
-and a final response. The keys were neither printed nor recorded. DeepSeek's thinking
-mode rejected forced `tool_choice: required` (HTTP 400) but succeeded with its normal
-automatic tool selection; its second request included the complete assistant message
-returned by the first request, including opaque reasoning state.
+The package at `Experiments/FoundationModelsPOC/` now provides three distinct kinds of
+evidence:
 
-This is still **not the complete decision POC** described above. The live evidence was
-run directly against provider HTTP APIs, not through `LanguageModelExecutor` and
-`LanguageModelSession`; scrubbed fixtures have not yet been recorded. Executor/session
-semantics, cancellation, retry, transcript reconstruction, and the schema compatibility
-table remain critical gates. They cannot be inferred from direct HTTP success, so the
-experiment remains a conformance harness and ADR-0006 does not change.
+1. **Offline conformance.** Twelve Swift Testing cases pass. They cover a canonical
+   Codable Apple `Transcript` archive, provider-metadata filtering on model switch,
+   partial OpenAI tool arguments and usage, Google thought signatures, Anthropic block
+   identity/thinking signatures/usage, precise malformed-stream errors, a real
+   Foundation Models `Tool` bridge, raw trace-before-budget behavior, strict schema
+   conversion, mixed-enum rejection and symlink-safe fixture access. Reconstructed,
+   credential-free SSE fixtures make the three wire shapes reproducible; they are not
+   represented as raw captures.
+2. **Live provider transport.** The repository-root `.env` contains the expected keys.
+   Reproducible, secret-safe direct two-request cycles pass for DeepSeek
+   `deepseek-v4-pro`, Google `gemini-3.5-flash`, and Anthropic `claude-sonnet-5`. Each
+   returns a tool call, accepts local tool output in a second request, preserves the
+   provider state required by its wire protocol, and returns a final response. The
+   script prints only HTTP status and structural booleans. Anthropic's current model
+   rejected the older `thinking.type: enabled` shape and passed with adaptive thinking
+   plus maximum output effort; this is exactly the provider drift the harness should
+   expose.
+3. **Real Apple session surface.** A scripted `LanguageModel`,
+   `LanguageModelExecutor`, `LanguageModelSession` and bridged Foundation Models `Tool`
+   two-request cycle compiles. The executable cannot reach `main`: the dynamic linker
+   exits 134 because the installed FoundationModels runtime lacks
+   `LanguageModelExecutorGenerationChannel.send`, while the Xcode SDK stub exports it.
+   The measured combination is macOS 27.0 `26A5378n`, system FoundationModels build
+   `26A5377s`, and Xcode 27.0 `27A5194q`. API keys cannot affect a pre-main loader
+   failure.
 
-The runtime gate failed conclusively on this Mac: a minimal custom
-`LanguageModelExecutor` compiled against Xcode 27's SDK but its test bundle could not
-load because the installed `/System/Library/Frameworks/FoundationModels.framework` lacks
-`LanguageModelExecutorGenerationChannel.send`. This is a SDK/runtime mismatch, not a
-provider issue. It prevents executing the executor/session POC here, therefore the
-hybrid is **not adoptable** for this project at present. The harness retains only the
-offline API-surface check, which does not call the unavailable symbol.
+The direct provider passes prove credentials and provider adapters are available; they
+do not turn the Apple architecture gate green. Cancellation propagation, partial-stream
+retry atomicity, recoverable tool correction, concurrent tool scheduling and live
+model switching through `LanguageModelSession` remain unexecutable until the runtime
+matches the SDK. Those are critical session-semantics gates, so adoption would be an
+unsupported bet.
+
+The experiment currently contains 928 lines of non-test Swift and a 75-line live probe
+script. It reuses the production providers' verified wire assumptions but no production
+source file; the parsers and scripted executor are isolated POC code. Because the Apple
+cycle cannot load, there is no honest measured claim yet that Foundation Models removes
+more loop code than its adapter and archival boundary adds.
+
+### Schema compatibility measured by the POC
+
+| JSON Schema feature | Result | Boundary |
+|---|---|---|
+| Object properties and required names | Supported | Required names must exist; omitted names become optional Apple properties. |
+| String, integer, number and boolean | Supported | Converted to native dynamic generation schemas. |
+| Arrays with an item schema | Supported | Recursively converted. |
+| Nonempty string enums | Supported | Converted to an Apple `anyOf` value schema. |
+| `additionalProperties: false` | Supported | Matches the closed generated object. |
+| Mixed/non-string or empty enums | Rejected | Exact enum element path or invalid enum diagnostic. |
+| `anyOf`, `oneOf`, `allOf`, `$ref` | Rejected | Exact unsupported keyword and path; never flattened. |
+| Numeric constraints and `pattern` | Rejected | Exact unsupported keyword and path. |
+| Open/schema-valued `additionalProperties` | Rejected | The bridge cannot preserve arbitrary maps faithfully. |
+| Descriptions, defaults, examples and any unknown keyword | Rejected | The strict subset never silently discards model-facing semantics. |
+
+### Reproduction and cleanup decision
+
+The package README contains the exact offline, Apple-session and live-provider
+commands. The experiment remains in the repository as a conformance harness because a
+matching OS seed can convert the pre-main blocker into direct session evidence without
+redoing the adapter, tool, transcript or schema work. If that later run passes all
+critical session gates, fold its fixtures and scripted executor utilities into the
+production test strategy while implementing the hybrid. If it fails semantically,
+retain the minimal failing fixture and remove unused prototype code.
 
 ### Explicitly out of scope
 
@@ -508,13 +563,13 @@ offline API-surface check, which does not call the unavailable symbol.
 
 ---
 
-## Specific plan changes if the POC passes
+## Specific plan changes after a compatible runtime passes
 
 These would require Toni's explicit decision and an ADR-0006 update in the same doc
 increment; they are not applied by this research.
 
-1. Replace `AgentMessage` as the live session type with `Transcript`; retain a
-   `DurableAgentState` persistence model and explicit mapper.
+1. Replace `AgentMessage` as the live session type with `Transcript`; persist it in a
+   versioned `TranscriptArchive` and keep execution facts in a separate `RunJournal`.
 2. Replace `ToolCapableProvider.stream(...)` with two `LanguageModel`/
    `LanguageModelExecutor` implementations built from the existing adapters.
 3. Remove the bespoke basic `AgentLoop`; introduce `TaskCoordinator`, which owns
@@ -551,9 +606,9 @@ increment; they are not applied by this research.
 - **Apple-controlled loop semantics.** If there is no supported way to intercept and
   resume recoverable tool failures, approvals, or partial streams safely, the hybrid
   should use Apple's transcript/executor types but retain Work Agent's own loop.
-- **Two state models.** A live Apple transcript and durable Work Agent state can drift.
-  Make conversion centralized, versioned, and round-trip tested; never update them
-  independently ad hoc.
+- **Conversation versus execution state.** A transcript archive and run journal have
+  different responsibilities. Derive model context from committed run state at explicit
+  boundaries and test reconstruction; never create a second shadow transcript.
 
 ---
 
@@ -567,9 +622,12 @@ They do **not** cover the hard Work Agent concern: a trustworthy, durable task t
 act on a person's Mac, stop for them, survive failure, switch providers, preserve every
 trace, and recover without duplicating consequences.
 
-So the architectural center should move one layer up:
+If a matching runtime passes the retained session gates, the architectural center
+should move one layer up:
 
 > Use Foundation Models for intelligence sessions. Build Work Agent for durable work.
 
-Prove the seam with the two-provider POC, then either update ADR-0006 to the hybrid or
-record the exact failed gates that justify retaining the custom loop.
+The current seed failed before execution, so Work Agent should retain the custom loop
+decision now. Re-run the harness after installing a matching seed; update ADR-0006 only
+if session cancellation, retry, correction, concurrency and model-switch semantics
+also pass—not merely because the binary loads.

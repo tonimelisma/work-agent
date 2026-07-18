@@ -7,11 +7,16 @@ recommendations until Toni accepts them in an increment DOR.
 
 The local comparison targets are:
 
-- the working-tree proposal `docs/plans/agent-loop-implementation.md`;
 - [the tool architecture](../plans/tool-architecture.md);
+- [the agent-loop runtime research](agent-loop-runtimes.md);
+- [the Foundation Models adaptation research](foundation-models-adaptation.md);
 - [ADR-0006](../decisions/0006-native-swift-agent-loop.md); and
 - the code that exists today: streaming chat through `ChatProvider`, with no agent
   loop or tool runtime implemented yet.
+
+This document is self-contained. It does not rely on an untracked working draft of an
+agent-loop implementation plan. Concrete limits and execution policies below are
+research recommendations, not accepted product requirements.
 
 ---
 
@@ -260,6 +265,102 @@ than imitate them.
 
 ---
 
+## Capability inventory: Apple, popular frameworks, and the native layer
+
+Foundation Models 27 materially changes the boundary. It already supplies a neutral
+model/executor protocol, a session-managed model/tool/model cycle, typed tools and
+structured output, a rich `Transcript`, provider metadata and reasoning signatures,
+usage and token APIs, dynamic model/tool/instruction profiles, history transforms,
+lifecycle hooks, Instruments support, and an Evaluations API. Rebuilding those types
+under different names would make a Swift framework worse, not more complete.
+
+The additional surface that developers value in established frameworks is mostly the
+runtime around that intelligence session:
+
+| Capability | Foundation Models 27 | Common framework layer | Native Work Agent layer |
+|---|---|---|---|
+| Model/tool/model cycle | `LanguageModelSession` | Agent runner | Use Apple when its runtime contract passes; retain an app-owned coordinator. |
+| Provider translation | `LanguageModelExecutor` | Provider adapters and middleware | First-party OpenAI-compatible and Anthropic executors, conformance fixtures, routing and failover. |
+| Conversation representation | Codable `Transcript`, metadata, custom segments | Normalized messages plus provider extensions | Archive the Apple transcript; do not create a shadow message hierarchy. |
+| Typed tools and output | `Tool`, `Generable`, `GenerationSchema` | Tool decorators, validation, output parsers | Wrap tools with host policy, effects, idempotency, resource locks, artifacts and budgets. |
+| Dynamic context | Profiles and `historyTransform` | Context processors, summaries, memory | Injected context assembler with exact request snapshots, privacy filtering and artifact paging. |
+| Persistence | Codable session transcript | Sessions, stores, graph checkpoints | Append-only run journal, versioned checkpoints, migration and restart-safe resume. |
+| Human control | Live async suspension is possible | Interrupts, approvals and guardrails | Serializable interrupts, preview/diff, approval evidence and rejection/correction paths. |
+| Reliability | Session errors and cancellation | Retry, fallback, circuit breaker, limits | Attempt-atomic retries, indeterminate side-effect recovery, provider fallback and run policies. |
+| Workflow composition | Dynamic profiles, skills and agent patterns | Graphs, flows, handoffs, teams | Ordinary Swift control flow first; optional typed workflow/handoff layer only after real need. |
+| Observability | Transcript hooks, usage, Instruments | Spans, studios, telemetry exporters | Structured local run events and user-legible trace; optional telemetry export kept separate. |
+| Evaluation | Foundation Models Evaluations | Datasets, trajectory assertions, replay | Cross-provider fixtures, scripted executors, fault injection, safety/effect assertions and native performance metrics. |
+| Integrations | Apple/system tools and provider packages | MCP, toolkits, plugins, RAG connectors | MCP/toolset/skill adapters and native macOS capabilities, with no required cloud control plane. |
+| Security | Framework guardrails and confirmation patterns | Auth scopes, policy middleware, sandboxes | Secret/data-egress policy, provenance, indirect-prompt-injection boundaries, least privilege and host-owned authorization. |
+
+This division is also the feature-completeness strategy: complement Apple at durable
+execution, policy, integration, inspection and testing seams; contribute fixes or
+utilities at Apple's abstraction level; and avoid a second competing session API.
+
+### Durable execution should have one source of truth
+
+Use an append-only `RunEvent` journal as execution truth and the archived Apple
+`Transcript` as the model-context projection. Record boundaries such as request
+planned, attempt started/committed, tool invocation registered/started/completed/
+failed/unknown, interrupt raised/resumed, and checkpoint committed. That distinction
+prevents a conversation transcript from pretending to answer the distributed-systems
+question “did this consequential side effect happen before the crash?”
+
+### The developer experience should be recognizably Swift
+
+- Public definitions are immutable `Sendable` values; mutable run coordination is
+  actor-isolated. Strict Swift 6 concurrency is the default, and `@unchecked Sendable`
+  is quarantined at audited adapter boundaries.
+- Use `async`/`await`, cooperative cancellation, `AsyncSequence`, `Clock` and
+  `Duration`. Do not expose callbacks, promise wrappers, thread knobs or stringly typed
+  timeouts.
+- Preserve Foundation Models types in public seams. Add adapters, modifiers and policy
+  wrappers instead of `AgentTranscript`, `AgentTool` and `AgentSchema` lookalikes.
+- Prefer generic, statically typed APIs at the public boundary and type erasure inside
+  storage, registries or heterogeneous UI collections. Outputs and tool arguments stay
+  compile-time typed.
+- Model lifecycle and failure states with exhaustive enums and typed errors. Separate
+  corrective model feedback, a durable interrupt, fatal host failure and an
+  indeterminate side-effect outcome. Vendor-facing unknown cases fail safely.
+- Dependencies are explicit values passed to a run. Avoid global registries and
+  singletons; reserve task-local values for trace correlation rather than business
+  state. Inject clocks and ID generators for deterministic tests.
+- Use result builders only for static declarative composition such as a tool set.
+  Dynamic workflows use normal Swift control flow. Macros may remove schema boilerplate
+  but must not hide execution, retries or side effects.
+- Keep the engine independent of SwiftUI. A small Observation/SwiftUI projection can
+  turn run events into UI state without importing UI frameworks into the runtime.
+- Follow the Swift API Design Guidelines: clarity at the call site, fluent names,
+  meaningful argument labels, documented public declarations and progressive defaults.
+  Design the usage examples before freezing protocols.
+- Use native value types (`URL`, `Data`, `UUID`, `Duration`) instead of strings and ship
+  DocC, runnable examples, scripted models, virtual clocks and fixture helpers as part
+  of the framework experience.
+
+An indicative surface—not an accepted API—would keep setup small while leaving the
+runtime visible:
+
+```swift
+let agent = Agent(
+    model: model,
+    instructions: "Prepare the report from the selected files.",
+    tools: ToolSet { ReadFile(); WriteReport() },
+    output: Report.self
+)
+
+let run = try await runtime.start(agent, input: request, dependencies: services)
+for try await event in run.events {
+    await presenter.consume(event)
+}
+let report = try await run.value
+```
+
+The advanced path should expose the same typed request snapshot, checkpoint,
+interrupt, attempt and tool-invocation events that the simple call uses. Progressive
+disclosure must not be implemented as a second, less observable runtime.
+
+---
+
 ## Best practices that converge across frameworks
 
 ### 1. Start with one agent and explicit tools
@@ -417,8 +518,8 @@ If the app-local boundary proves reusable and is extracted, the package should a
 - make concurrency safe by default through declared resource and idempotency policy;
 - ship conformance tests and deterministic fake providers as first-class API;
 - separate canonical local trace storage from optional OpenTelemetry-style export;
-- support Apple Foundation Models through an adapter rather than treating Apple as a
-  competing island;
+- build on Apple Foundation Models types and session substrate where the conformance
+  harness proves them, while keeping the durable runtime independently testable;
 - keep UI, provider catalog curation, credentials, built-in tool policy, and app task
   storage outside the package; and
 - remain useful without MCP, a cloud account, a deployment server, or a graph DSL.

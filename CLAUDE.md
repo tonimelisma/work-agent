@@ -118,6 +118,22 @@ Grep is the traceability tool: `rg "FR-001"` finds the requirement, the code, an
 tests. If it finds only the requirement, the requirement is unimplemented — that is a
 signal, not a bug in the scheme.
 
+## Local provider credentials
+
+The repository-root `.env` is the established local-development credential source and
+is ignored by Git. It currently supplies `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, and
+`ANTHROPIC_API_KEY` for live provider probes.
+
+- Before reporting that a key is unavailable, check its assignment in `.env` with a
+  non-printing presence test. The key may not be exported in the current process.
+- Source `.env` in the invoking shell for an authorized live probe. Never print keys,
+  include them in command output, persist them in fixtures, or copy them into traces.
+- Scrub recorded provider traffic before committing it; retain structural evidence,
+  not authorization headers or user-specific content.
+- Keep authentication evidence separate from runtime evidence. A present, working API
+  key proves provider access; it cannot fix an SDK/OS linker mismatch or prove that an
+  Apple `LanguageModelExecutor` can run.
+
 ---
 
 ## Increment workflow

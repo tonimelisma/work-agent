@@ -44,4 +44,4 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 | [codex-harness-tools.md](codex-harness-tools.md) | Codex's harness read from source: minimal tool set, PTY sessions, token budgets, sandbox-vs-approval axes | 2026-07-17 |
 | [agent-loop-runtimes.md](agent-loop-runtimes.md) | What runs the agent loop: live tool-calling probes per provider, framework alternatives, the extras-bag finding (ADR-0006) | 2026-07-18 |
 | [agent-framework-comparison.md](agent-framework-comparison.md) | Developer comparison of popular agent frameworks against the proposed loop/tool layer; production-runtime gaps and a native Swift AgentKit thesis | 2026-07-18 |
-| [foundation-models-adaptation.md](foundation-models-adaptation.md) | Whether and how to adapt the loop to macOS 27 Foundation Models: API mapping, hybrid architecture, and POC gates | 2026-07-18 |
+| [foundation-models-adaptation.md](foundation-models-adaptation.md) | Whether and how to adapt the loop to macOS 27 Foundation Models: API mapping, hybrid boundary, and completed no-adopt POC on the current SDK/runtime seed | 2026-07-18 |
