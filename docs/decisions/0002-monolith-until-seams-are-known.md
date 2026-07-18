@@ -3,8 +3,6 @@
 - **Status:** Accepted
 - **Date:** 2026-07-16
 - **Deciders:** Toni
-- **Supersedes:** —
-- **Superseded by:** —
 
 ## Context
 

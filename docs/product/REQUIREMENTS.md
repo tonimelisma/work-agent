@@ -1,6 +1,6 @@
 # Work Agent — Requirements
 
-**Status:** Living. Last substantive change: 2026-07-16.
+**Status:** Living. Last substantive change: 2026-07-18.
 
 Every requirement here traces to something Toni said, and quotes it. If it doesn't, it
 isn't a requirement — it's an open question. See [CLAUDE.md](../../CLAUDE.md)
@@ -11,11 +11,12 @@ Non-negotiable 0.
 Requirements use [EARS](https://alistairmavin.com/ears/) syntax so each is individually
 testable: *The system shall…* (always), *While/When/Where/If…* (conditional).
 
-`FR` = functional, `NFR` = non-functional. **IDs are permanent** — removed requirements
-are tombstoned at the bottom and their numbers are never reused.
+`FR` = functional, `NFR` = non-functional. **IDs are permanent and never reused.**
+A dropped requirement is deleted from this doc — no tombstones — and git history is
+the archive. So a number is never handed out twice, the next free IDs are tracked
+here: **next FR: FR-068 · next NFR: NFR-009.**
 
-**Status:** `Specified` (agreed, not built) · `Implemented` (built, tested, traced) ·
-`Removed` / `Superseded`.
+**Status:** `Specified` (agreed, not built) · `Implemented` (built, tested, traced).
 
 Everything is `Specified`. The codebase is an Xcode template.
 
@@ -151,26 +152,3 @@ Stated, so their absence is a decision:
 - **Connections** (Gmail, Drive, M365) — until a real task needs one.
 - **Native app control** (Accessibility, screen capture) — ADR-0003 keeps it possible.
 - **Automations and scheduling** — post-engine.
-
----
-
-## Removed and superseded
-
-IDs are permanent and never reused. Most of these were written by an agent from the
-inherited `MACOS_FRONTEND_ROADMAP.md` draft, on topics Toni had never raised. That is the
-failure CLAUDE.md Non-negotiable 0 now exists to prevent.
-
-| ID | Was | Why removed |
-|---|---|---|
-| FR-002 | At least two hosted vendors from different vendors | "remove fr-002" |
-| FR-003 | Changing provider preserves capabilities | Contradicts FR-060; with full-capability support, switching models *does* change what's available |
-| FR-004 | Degrade provider-exclusive features to a neutral implementation | Directly contradicted: "we're not trying to neuter them" |
-| FR-007 | Local model treated as an ordinary provider | "no local models ever" — now a non-goal |
-| FR-010–FR-013, FR-015 | Durable task model, persistence, status, event recording, stop | From the draft. Toni has not specified a task model. FR-063 covers trace persistence. |
-| FR-014 | Preserve partial completion | "I don't know what partial completion means" — explained; not requested |
-| FR-016 | Do not present hidden reasoning as progress | Reversed by FR-065/FR-066 — reasoning is shown, toggleable |
-| FR-020–FR-025 | Effect-based approval model (6 requirements) | From the draft. "specific tool approvals will come later" |
-| FR-030–FR-032 | Activity record, local/cloud split, source inspection | From the draft. FR-063/FR-064 cover what Toni actually asked for |
-| FR-040–FR-042 | Hide implementation vocabulary, outcomes over tool calls, advanced surface | From the draft. FR-065 supersedes: show the machinery, made friendly |
-| FR-053 | Offer only tool-calling models | Superseded by FR-061 — the curated set is stricter |
-| NFR-004 | No arbitrary code execution on the host outside isolation | From the draft. Toni has not raised sandboxing |

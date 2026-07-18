@@ -215,7 +215,7 @@ suspended) and gives FR-065's trace view a natural "asked you / you answered" be
 
 **`update_plan`** — task-progress structure.
 Codex's shape: ordered steps, exactly one `in_progress`. Costs an afternoon and is
-the direct data source for the increment-4 "watch a task run" UI (FR-012's successor)
+the direct data source for the increment-4 "watch a task run" UI
 and for FR-065's friendly display. In: worth it.
 
 **`fetch_url`** — web page → **paged markdown** (decided: Toni picked the paged

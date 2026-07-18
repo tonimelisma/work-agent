@@ -1,7 +1,7 @@
 # Work Agent — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-07-16.
+change: 2026-07-18.
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -60,11 +60,11 @@ increment time and tell us little.
 Requirement IDs go in test display names:
 
 ```swift
-@Test("FR-012: a running task exposes its current status")
-func runningTaskExposesStatus() async throws { ... }
+@Test("FR-001: selecting a provider does not require a rebuild")
+func providerSelectionIsRuntime() async throws { ... }
 ```
 
-`rg "FR-012"` finds the requirement, the code, and the test. That's the whole scheme —
+`rg "FR-001"` finds the requirement, the code, and the test. That's the whole scheme —
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
@@ -74,10 +74,10 @@ convince themselves of things that aren't true.
 
 ## Conventions
 
-- Requirement references at the point of satisfaction: `// REQ: FR-012 — <what and why>`.
+- Requirement references at the point of satisfaction: `// REQ: FR-001 — <what and why>`.
   On the code that satisfies it, not on the file.
 - Comments state constraints the code can't. Not what the next line does.
-- No implementation vocabulary in user-facing strings (FR-040).
+- No implementation vocabulary in user-facing strings (PRODUCT.md �2).
 
 ## Deferred, and why it's not here
 

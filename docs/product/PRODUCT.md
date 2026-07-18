@@ -1,6 +1,6 @@
 # Work Agent — Product
 
-**Status:** Living. Last substantive change: 2026-07-16.
+**Status:** Living. Last substantive change: 2026-07-18.
 
 This doc holds the bet: what we're building, for whom, why it can exist, and what it
 is not. Testable statements live in [REQUIREMENTS.md](REQUIREMENTS.md). Sequencing
@@ -153,8 +153,6 @@ that depends on them.
   have a working app that talks to an LLM and a set of tools we've actually tested — so
   the choice is made against what the thing demonstrably does, not against imagination.
   The risk this carries, and what bounds it, is in ROADMAP.md.
-- **The increment-5 starter tool set.** Which tools exist determines which tasks are
-  available to pick from, so this quietly constrains the product. See ROADMAP.md.
 - **What "neutral" means mechanically.** Adapter per provider, OpenAI-compatible
   endpoint, or a proxy layer. Subject of the runtime research spike and ADR-0006.
 - **OpenAI subscription sign-in (FR-067).** Toni asked for it. Anthropic's equivalent is
