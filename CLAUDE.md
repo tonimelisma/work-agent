@@ -147,28 +147,6 @@ write (Non-negotiable 0 applies to docs with full force — it was invented for 
 
 Everything below this line is the **code-increment** process.
 
-### First: triage open review comments
-
-Every code increment **starts** by clearing the review backlog — before the DOR, before
-any code.
-
-1. Read the review comments on the **last 10 PRs** (`gh pr list --state all --limit 10`,
-   then `gh api` / `gh pr view --comments` per PR). A comment is **unclaimed** if nobody
-   has replied to take it.
-2. **Claim each one you'll act on by replying to it** — a short comment saying you're
-   taking it, so parallel agents don't collide on the same note.
-3. **Fix them properly. No band-aids.** A review comment is a defect in the design or the
-   code; the fix addresses the cause, not the symptom. If a comment is wrong or stale,
-   reply saying why and why you're not acting — don't silently skip it.
-4. Fixes ride in this increment's normal commits and specs, same rules as everything else
-   (a behaviour change updates requirements, etc.).
-5. **After the increment merges, annotate.** Reply to each claimed comment with where it
-   was fixed — the commit or file:line — so the reviewer can see the resolution without
-   digging. This closes the loop; an unannotated "fixed" is not done.
-
-If the backlog is empty, say so in one line and move on. This is a gate the same way the
-DOR is: don't build over unaddressed review feedback.
-
 ### Before starting: Definition of Ready
 
 **The DOR is a gate, not an announcement.** Post the list, then stop. Toni gives an
@@ -192,6 +170,22 @@ proceed past.
 Don't fake a ✅. A ❌ with a sentence about why is the point of the list.
 
 ### During
+
+The DOR comes first. Only once it's clear and the work begins does the rest of this run —
+starting with the review backlog.
+
+**First task of the work: triage open review comments.**
+
+1. Read the review comments on the **last 10 PRs** (`gh pr list --state all --limit 10`,
+   then `gh api` per PR). A comment is **unclaimed** if nobody has replied to take it.
+2. **Claim each one you'll act on by replying to it** — so parallel agents don't collide.
+3. **Fix them properly. No band-aids.** A review comment is a defect in the design or the
+   code; the fix addresses the cause, not the symptom. If a comment is wrong or stale,
+   reply saying why you're not acting — don't silently skip it.
+4. Fixes ride in this increment's normal commits and specs (a behaviour change updates
+   requirements, etc.). Empty backlog: say so in one line and move on.
+
+Then the increment's actual work:
 
 ```bash
 git worktree add ../wa-<slug> -b <slug>    # code increments only
