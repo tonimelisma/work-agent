@@ -41,3 +41,4 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 | [provider-subscription-auth.md](provider-subscription-auth.md) | Whether a third-party app may use someone's ChatGPT/Claude subscription; how the OpenAI Codex OAuth flow works | 2026-07-16 |
 | [provider-chat-endpoints.md](provider-chat-endpoints.md) | Live-probed chat endpoint, auth, and reasoning-field details per curated provider | 2026-07-17 |
 | [agent-harness-builtin-tools.md](agent-harness-builtin-tools.md) | Built-in tools in Claude Code/Cowork: full inventory, limits, and how tool output is kept from flooding the context window | 2026-07-17 |
+| [codex-harness-tools.md](codex-harness-tools.md) | Codex's harness read from source: minimal tool set, PTY sessions, token budgets, sandbox-vs-approval axes | 2026-07-17 |

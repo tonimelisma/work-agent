@@ -74,7 +74,9 @@ rediscovery of a rejected path.
 Alternative considered: Nygard's original (context/decision/consequences). Lighter, but
 no dedicated options section — rejected for exactly the reason above. See ADR-0001.
 
-**What we took:** MADR, trimmed, plus explicit append-only/supersession discipline.
+**What we took:** MADR, trimmed. (Originally with append-only/supersession discipline;
+changed 2026-07-18 — Toni: ADRs are living, kept up to date and MECE, deleted when
+stale. See CLAUDE.md and ADR-0001.)
 Rationale in ADR-0001.
 
 ### Requirement ID schemes
@@ -84,11 +86,15 @@ Not much rigorous published comparison; this is the practitioner consensus:
 - **Hierarchical IDs (1.2.3) are actively harmful** when code references them. Inserting
   a requirement renumbers its siblings and silently invalidates every reference. This is
   well-attested and is why we use flat IDs.
-- **IDs must be permanent.** Dropped requirements are tombstoned, never renumbered.
+- **IDs must be permanent.** Dropped requirements are never renumbered; the common
+  practice is tombstoning, though this repo now deletes instead (next-free counters
+  guard against reuse — changed 2026-07-18).
 - **Domain prefixes** (`TASK-001`, `APPR-001`) make IDs self-describing but require a
   stable taxonomy up front and make re-homing awkward when a domain splits.
 
-**What we took:** flat `FR-###` / `NFR-###`, permanent, tombstoned on removal.
+**What we took:** flat `FR-###` / `NFR-###`, permanent, deleted on removal with
+next-free ID counters in REQUIREMENTS.md (tombstoning dropped 2026-07-18: "No
+tombstones ever. All docs always up to date").
 
 ---
 

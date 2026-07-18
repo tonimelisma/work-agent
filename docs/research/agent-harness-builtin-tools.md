@@ -10,7 +10,8 @@ labeled as such — they reflect one version on one day and rot fastest.
 
 Why this doc exists: Work Agent needs its own tool harness, and the design questions —
 what tools, what defaults, how to keep a single `Read` from eating the context window —
-have all been answered in production by Claude Code. Cowork is the same harness in a
+have all been answered in production by Claude Code. The other production answer, read
+from source rather than docs, is in [codex-harness-tools.md](codex-harness-tools.md). Cowork is the same harness in a
 desktop skin, which makes it the closest existing product to what we're building.
 
 ---

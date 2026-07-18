@@ -1,10 +1,8 @@
 # ADR-0001 — Record architecture decisions, in this format
 
 - **Status:** Accepted
-- **Date:** 2026-07-16
+- **Date:** 2026-07-16; lifecycle changed to living docs 2026-07-18
 - **Deciders:** Toni
-- **Supersedes:** —
-- **Superseded by:** —
 
 ## Context
 
@@ -19,9 +17,9 @@ Swift agent loop, seven packages, and XPC as though they were facts rather than 
 with no alternatives and no reasoning. Unreviewable, because there was nothing to
 disagree with.
 
-We also need a home for decisions that is *not* the engineering doc. Those two things
-have opposite lifecycles: current-state synthesis changes constantly, a decision record
-must not change at all.
+We also need a home for decisions that is *not* the engineering doc. They answer
+different questions: ENGINEERING.md says what is true now, an ADR says why we chose
+it and what we rejected. Merging them buries the reasoning inside the synthesis.
 
 ## Decision
 
@@ -33,10 +31,15 @@ lightly trimmed [MADR](https://adr.github.io/madr/).
 would reasonably ask "why on earth is it like this?" Library picks and naming
 conventions are not ADRs. If it's arguable and durable, it's an ADR.
 
-**Append-only.** An ADR is a decision frozen at a moment. When it stops being true,
-write a new ADR and mark the old one `Superseded by ADR-NNNN`. Never edit the reasoning
-of an accepted ADR — the wrong turns are the value. A record of what we believed is
-worthless once it's been quietly corrected.
+**Living, MECE, deleted when stale** *(Toni, 2026-07-18: "ADRs are not append only.
+They are to be kept up to date and MECE… deleted when stale.")* An ADR always states
+the *current* decision and its reasoning. When the decision changes, the ADR is
+updated in place — reasoning, alternatives, consequences, all of it. When the
+decision stops mattering, the file is deleted. Git history is the archive of what we
+used to believe; the working tree carries no dead decisions. Numbers are never
+reused, so references in history stay unambiguous. (This paragraph originally said
+the opposite — append-only with supersession chains — and was rewritten under its
+own new rule.)
 
 **Considered options carry their tradeoffs.** An ADR listing alternatives without saying
 what was bad about the winner and good about the losers hasn't recorded a decision, it
@@ -56,9 +59,9 @@ less friction. Rejected because it has no dedicated place for considered options
 is the section that stops a future agent from redoing the analysis. That's the section
 we most need.
 
-**Decisions inside ENGINEERING.md** — One less file to find. Rejected: opposite
-lifecycles. ENGINEERING.md must be edited freely to stay true; ADRs must not be edited
-at all. Merging them means one of those properties dies, and it would be the ADR one.
+**Decisions inside ENGINEERING.md** — One less file to find. Rejected: they answer
+different questions (what is vs. why), and merging them buries alternatives-and-
+tradeoffs inside a doc that gets rewritten for unrelated reasons. MECE dies first.
 
 **No ADRs; rely on git history and PRs** — Zero overhead. Rejected: commit messages
 record *what* changed, and PR threads are unsearchable, unindexed, and lost if the repo
@@ -66,9 +69,13 @@ moves. Neither survives an agent's context window, which is the actual reader he
 
 ## Consequences
 
-**Good.** Decisions become reviewable and refusable. A superseded ADR shows the reasoning
-that changed, which is often more useful than the current answer. Agents can read why
-and stop reflexively fixing intent.
+**Good.** Decisions become reviewable and refusable. Agents can read why and stop
+reflexively fixing intent. Every ADR on disk is current, so nothing needs to be
+cross-checked against a supersession chain before trusting it.
+
+**Traded away.** The old append-only rule kept wrong turns visible in the working
+tree; now recovering superseded reasoning means reading git history. Accepted cost —
+a doc that must be checked for staleness before use is worse than a history lookup.
 
 **Bad.** Overhead per decision, and it lands hardest exactly when momentum is highest.
 The predictable failure is ADRs written after the fact to satisfy the DOD — fiction with

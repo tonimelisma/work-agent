@@ -20,13 +20,15 @@ Read the ones your increment touches. Do not read all of them by reflex.
 | [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md) | What must be true, testably, with IDs | Changes every increment that adds or alters behavior |
 | [docs/product/ROADMAP.md](docs/product/ROADMAP.md) | What order, and what's deliberately deferred | Changes when sequencing changes |
 | [docs/engineering/ENGINEERING.md](docs/engineering/ENGINEERING.md) | How the system is built *right now* | Always reflects reality — never aspiration |
-| [docs/decisions/](docs/decisions/) | Why we chose this over the alternatives, at a point in time | Append-only; supersede, never rewrite |
+| [docs/decisions/](docs/decisions/) | Why we chose this over the alternatives | Kept up to date and MECE; updated when the decision changes, deleted when stale |
 | [docs/research/](docs/research/) | What we learned from outside this repo | Living — update in place, don't append journal entries |
+| [docs/plans/](docs/plans/) | What we intend to build and how, in enough detail to start | A proposal until its increment's DOR; decisions recorded in place as Toni makes them |
 
-**ENGINEERING.md vs ADRs** is the distinction people get wrong. An ADR is a decision
-frozen at a moment, with the alternatives and the reasoning intact. ENGINEERING.md is
-the current synthesis. When an ADR is superseded, the old ADR stays exactly as written
-and ENGINEERING.md moves on.
+**ENGINEERING.md vs ADRs** is the distinction people get wrong. ENGINEERING.md says
+*what is true now*; an ADR says *why we chose it*, with the alternatives and their
+tradeoffs. Both are living: when a decision changes, its ADR is updated in place, and
+an ADR whose decision no longer matters is deleted. Git history is the archive —
+nothing in the working tree exists to memorialize a dead decision.
 
 These docs are MECE. If a fact belongs in two of them, it belongs in one and is linked
 from the other. Duplicated facts drift and then lie.
@@ -55,7 +57,7 @@ from the other. Duplicated facts drift and then lie.
 
 1. **Specs are the source of truth, and they lose to you.** If a requirement or ADR
    contradicts what Toni just asked for, that is not a blocker and not an argument.
-   Surface it as a clarification — "this contradicts FR-014 / ADR-0003, are we changing
+   Surface it as a clarification — "this contradicts FR-062 / ADR-0003, are we changing
    that decision?" — and if the answer is yes, update the spec *in the same increment*.
    Never leave code and spec disagreeing. Never use a spec to refuse a request.
 
@@ -84,19 +86,27 @@ from the other. Duplicated facts drift and then lie.
 
 Requirements use flat, prefixed, permanent IDs: `FR-001` (functional), `NFR-001`
 (non-functional). **IDs are never reused and never renumbered.** A dropped requirement
-is marked `Superseded` or `Removed` in place, keeping its number forever. Renumbering
-breaks every reference in the codebase, which is the whole failure mode we're avoiding.
+is **deleted outright** — no tombstone rows, no "Removed" status lingering in the doc.
+Git history is the archive; REQUIREMENTS.md records the next-free ID counters so a
+dead number is never handed out again. Renumbering breaks every reference in the
+codebase, which is the whole failure mode we're avoiding.
+
+**No stale references, ever.** The increment that drops or changes a requirement
+scrubs every mention of it — ROADMAP, ENGINEERING.md, plans, code comments, tests —
+in that same increment. All docs are always up to date; a doc citing a dead ID is a
+bug, not a historical curiosity. ADRs included — they are kept up to date like
+everything else.
 
 In code, at the point where the requirement is actually satisfied:
 
 ```swift
-// REQ: FR-012 — provider adapters are selected at runtime, never compiled in.
+// REQ: FR-001 — provider adapters are selected at runtime, never compiled in.
 ```
 
 In tests, the ID goes in the display name so it's greppable with zero ceremony:
 
 ```swift
-@Test("FR-012: selecting a provider does not require a rebuild")
+@Test("FR-001: selecting a provider does not require a rebuild")
 func providerSelectionIsRuntime() async throws { ... }
 ```
 
@@ -104,7 +114,7 @@ We deliberately do **not** declare a Swift Testing `@Tag` per requirement. Tags 
 give us `--filter` by requirement, but cost a tag declaration per ID forever. If we
 later want filtering badly enough to pay that, an ADR revisits it.
 
-Grep is the traceability tool: `rg "FR-012"` finds the requirement, the code, and the
+Grep is the traceability tool: `rg "FR-001"` finds the requirement, the code, and the
 tests. If it finds only the requirement, the requirement is unimplemented — that is a
 signal, not a bug in the scheme.
 
@@ -115,6 +125,27 @@ signal, not a bug in the scheme.
 An increment is one unit of deliverable work. **Code increments** use a worktree and a
 PR. **Doc-only increments** commit straight to main — no worktree, no PR — since they
 can't break anyone else's build.
+
+### Doc increments: the lightweight path
+
+Doc increments skip the full DOR/DOD ceremony below — that machinery exists to stop
+code being built on unverified assumptions, and a doc can't ship a bug to a build.
+What replaces it:
+
+**Gate (one question):** did Toni ask for this, and is what he asked for clear? An
+explicit request for research or a doc *is* the go-ahead — no separate DOR post, no
+waiting. Anything beyond what he asked for is an open question to ask, not a thing to
+write (Non-negotiable 0 applies to docs with full force — it was invented for one).
+
+**Done (short report, honest):**
+- Content traces to what was actually said, read, or measured — sources named,
+  Toni's words quoted where they're the authority
+- MECE holds: each fact lives in one doc and is linked from the others
+- Indexes and cross-references updated (research README, this file's doc table)
+- Committed straight to main, and anything stale the work uncovered is flagged
+  rather than silently left
+
+Everything below this line is the **code-increment** process.
 
 ### Before starting: Definition of Ready
 
@@ -154,9 +185,9 @@ or it isn't done.
 
 - ✅/❌ The deliverable works, and I verified it by running it — not by inferring from tests
 - ✅/❌ Tests written for the new requirement IDs, and the full suite is green (paste the result)
-- ✅/❌ Requirements updated: new IDs added, changed IDs edited, dead IDs marked superseded
+- ✅/❌ Requirements updated: new IDs added, changed IDs edited, dropped requirements deleted and every reference to them scrubbed
 - ✅/❌ ENGINEERING.md reflects reality after this change
-- ✅/❌ ADRs written for decisions made; superseded ADRs marked, not rewritten
+- ✅/❌ ADRs written for decisions made; ADRs whose decision changed updated in place; stale ADRs deleted
 - ✅/❌ Research docs written or updated for anything learned the hard way
 - ✅/❌ CLAUDE.md updated if the process itself changed
 - ✅/❌ Code references its requirement IDs

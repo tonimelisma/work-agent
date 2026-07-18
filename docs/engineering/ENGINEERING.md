@@ -1,7 +1,7 @@
 # Work Agent — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-07-17.
+change: 2026-07-18.
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -52,9 +52,9 @@ docs/                            specs
 | Tests | swift-testing | ADR-0004 |
 | Structure | Single app target, monolith | ADR-0002 |
 | Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | ADR-0003 |
-| Provider chat | Two adapters behind `ChatProvider` | ADR-0006 |
+| Provider chat | Two adapters behind `ChatProvider` | ADR-0007 |
 | Model registry | models.dev, bundled + refreshed | ADR-0005 |
-| Agent runtime (tools/loop) | **Undecided** | ADR-0007, deferred |
+| Agent runtime (tools/loop) | **Undecided** | ADR-0006, deferred |
 | Min macOS | **Undecided** (project targets 27.0 by template default) | Nothing forces it yet |
 
 **App Sandbox is off.** The Xcode template enabled it; it blocked all outbound network,
@@ -68,14 +68,14 @@ Hardened Runtime stays on for notarization. Networking-and-data types are marked
 Still a monolith (ADR-0002). One structural seam exists, and it's the one the thesis
 demands: **all inference goes through `ChatProvider`** (FR-001). Two adapters sit behind
 it — OpenAI-compatible (ten providers) and Anthropic — chosen by a factory keyed on
-provider id (ADR-0006). The UI and view models never know which adapter answered.
+provider id (ADR-0007). The UI and view models never know which adapter answered.
 
 Data flows one way: `ProviderStore` (what's configured, key in Keychain) and
 `RegistryLoader` (what models exist) feed the views; `ChatViewModel` resolves the selected
 model to an adapter, streams chunks, and persists the conversation. No package boundaries
 yet — they earn their existence by hurting first.
 
-The agent loop, tools, and orchestration are **not** here — that's ADR-0007. What exists
+The agent loop, tools, and orchestration are **not** here — that's ADR-0006. What exists
 is plain streaming chat.
 
 ## Testing
@@ -106,10 +106,10 @@ convince themselves of things that aren't true.
 
 ## Conventions
 
-- Requirement references at the point of satisfaction: `// REQ: FR-012 — <what and why>`.
+- Requirement references at the point of satisfaction: `// REQ: FR-001 — <what and why>`.
   On the code that satisfies it, not on the file.
 - Comments state constraints the code can't. Not what the next line does.
-- No implementation vocabulary in user-facing strings (FR-040).
+- No implementation vocabulary in user-facing strings (PRODUCT.md §2).
 
 ## Deferred, and why it's not here
 

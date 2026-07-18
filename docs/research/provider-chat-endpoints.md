@@ -2,7 +2,7 @@
 
 **Last verified:** 2026-07-17 (every endpoint probed live)
 **Why we looked:** Increment 2 streams chat from all eleven curated providers. Guessing
-endpoints/paths/auth would mean 404s and 401s discovered mid-UI. Feeds ADR-0006.
+endpoints/paths/auth would mean 404s and 401s discovered mid-UI. Feeds ADR-0007.
 
 ---
 
@@ -25,7 +25,7 @@ an SSE body.
 | meta | (not probed — no key) | Bearer | — |
 | thinkingmachines | (not probed — no key) | Bearer | — |
 
-## What this settles for the adapters (ADR-0006)
+## What this settles for the adapters (ADR-0007)
 
 - **The OpenAI wire format is a de facto standard.** Ten of eleven speak
   `POST {base}/chat/completions`, `stream:true`, SSE, bearer auth. One adapter covers them.

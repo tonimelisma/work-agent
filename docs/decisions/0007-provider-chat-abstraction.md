@@ -1,10 +1,8 @@
-# ADR-0006 — Provider chat abstraction: two native adapters
+# ADR-0007 — Provider chat abstraction: two native adapters
 
 - **Status:** Accepted
 - **Date:** 2026-07-17
 - **Deciders:** Toni
-- **Supersedes:** —
-- **Superseded by:** —
 
 ## Context
 
@@ -13,7 +11,7 @@ replies. That needs a concrete answer to: how does one Swift app speak to eleven
 providers without eleven bespoke clients, and without coupling to any one of them
 (FR-001)?
 
-This is narrower than the agent-runtime question (ADR-0007, deferred), which is about the
+This is narrower than the agent-runtime question (ADR-0006, planned), which is about the
 tool-calling loop. This ADR is only about **streaming a chat reply**. Getting it right
 here sets the seam the runtime later builds on.
 
@@ -54,7 +52,7 @@ third wire format) needs a third adapter.
 local LiteLLM) — One code path, broadest coverage. Rejected: it puts a process we bundle
 and manage between us and every call, it flattens provider-specific features (against
 FR-060), and it's a heavy dependency for a plain chat. Reconsider only if adapter count
-grows painfully — an ADR-0007 concern, not this one.
+grows painfully — an ADR-0006 concern, not this one.
 
 **Eleven bespoke clients** — Maximum fidelity per provider. Rejected as obviously wasteful
 when ten share a format. This is what the abstraction exists to avoid.
@@ -81,7 +79,7 @@ id. Each is a small maintenance surface, and staleness is silent until a provide
 require a JWT signed from its `id.secret` key — a third auth style this ADR does not
 implement. GLM is in the menu but unusable until that's built. Named, not hidden.
 
-**Deferred to ADR-0007.** Tool calling, the agent loop, retries/orchestration, and
+**Deferred to ADR-0006.** Tool calling, the agent loop, retries/orchestration, and
 whether a heavier runtime replaces these thin adapters. This ADR deliberately does the
 smallest correct thing.
 

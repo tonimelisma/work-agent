@@ -3,8 +3,6 @@
 - **Status:** Accepted
 - **Date:** 2026-07-16
 - **Deciders:** Toni
-- **Supersedes:** —
-- **Superseded by:** —
 
 ## Context
 
@@ -27,17 +25,17 @@ starting, because a half-maintained trace is a trace that lies.
 Requirement IDs go in the test's display name:
 
 ```swift
-@Test("FR-012: a running task exposes its current status")
-func runningTaskExposesStatus() async throws { ... }
+@Test("FR-001: selecting a provider does not require a rebuild")
+func providerSelectionIsRuntime() async throws { ... }
 ```
 
 and in code at the point of satisfaction:
 
 ```swift
-// REQ: FR-012 — status is published, not polled, so the UI can't miss a transition.
+// REQ: FR-001 — provider adapters are selected at runtime, never compiled in.
 ```
 
-`rg "FR-012"` returns the requirement, the code, and the tests. That's the mechanism.
+`rg "FR-001"` returns the requirement, the code, and the tests. That's the mechanism.
 No registry, no per-ID declaration, nothing to keep in sync.
 
 ## Considered options
@@ -62,10 +60,10 @@ output, which means a failing test names the requirement it broke. Costs: no
 `--filter`-by-requirement, and nothing enforces the format — a typo'd ID is invisible
 until someone greps and finds nothing.
 
-**A `@Tag` per requirement** — Real filtering: run every test for FR-012. Rejected on
+**A `@Tag` per requirement** — Real filtering: run every test for FR-001. Rejected on
 cost: swift-testing tags are static members, so each ID needs a declaration in a Tag
 extension, forever, growing with the requirements doc. That's the expensive scheme that
-gets abandoned. If filtering ever becomes worth that price, this ADR gets superseded —
+gets abandoned. If filtering ever becomes worth that price, this ADR gets updated —
 and the display names remain valid alongside tags, so it's not a one-way door.
 
 **A traceability matrix file** — Explicit, auditable, the classic answer. Rejected: a
@@ -73,8 +71,8 @@ third artifact to keep in sync with two others, and it's stale the first time so
 in a hurry. Grep can't lie about what's in the code; a matrix can.
 
 **Comments only, no test-name convention** — Simplest. Rejected: it makes requirements
-traceable to code but not to *evidence*, which is the half that matters. "FR-012 is
-implemented" and "FR-012 is verified" are different claims.
+traceable to code but not to *evidence*, which is the half that matters. "FR-001 is
+implemented" and "FR-001 is verified" are different claims.
 
 ### XCUITest
 
