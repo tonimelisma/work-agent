@@ -16,6 +16,11 @@ For *why* a choice was made, read the ADR. This doc says what is true now;
 The app runs, streams chat from real providers, and stores keys in the Keychain. As of
 increment 2:
 
+An isolated `Experiments/FoundationModelsPOC/` Swift package also exists. It links the
+macOS 27 Foundation Models provider surface and has offline tests for the prospective
+persistence, SSE-fragment, and schema boundaries. It is not production target membership
+and has not changed the agent-runtime decision; live provider executor gates are pending.
+
 ```
 Work Agent/
   Work_AgentApp.swift            App: WindowGroup { ChatView } + Settings scene
