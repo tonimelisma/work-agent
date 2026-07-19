@@ -17,7 +17,7 @@ Each library stands alone, and every dependency is an Apple framework.
 | Library | What it gives you | Depends on |
 |---|---|---|
 | **Executors** | Ten cloud providers as `LanguageModel`s — OpenAI-compatible ×9 and Anthropic native. Provider wire quirks handled, and provider capabilities *beyond* the FM API exposed: typed options for cache control, server-side tools, and thinking budgets; direct clients for non-conversational APIs | FoundationModels |
-| **ToolKit** | Ready-made native tools — files (including docx text), web fetch, Contacts, Calendar, Reminders, Mac app control. Each documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
+| **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders; Mac app control on macOS. Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **RuntimeCore** | Agent runs that survive crash, relaunch, and suspension: append-only journal, checkpoints, resumable interrupts, composable run limits, retry, and cross-provider failover mid-run | FoundationModels |
 | **RuntimeTesting** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
 | **Replay / Evals** | Recorded runs replayed against new models, prompts, or providers | RuntimeCore + RuntimeTesting |
@@ -55,16 +55,21 @@ let deepseek = OpenAICompatibleModel(.deepSeek, apiKey: key)
 // Both drop into the same LanguageModelSession slot as Apple's on-device model.
 ```
 
-## ToolKit
+## ToolKitForMac / ToolKitForiOS
 
 A language model is only as useful as what it can touch. ToolKit ships
 `FoundationModels.Tool` conformances for the things Apple-platform apps
 actually have: the file system, the web, Contacts, Calendar, Reminders, and —
-on macOS — other applications. Tools that need user permission document the
-exact usage-description keys the host app must carry. File tools have a plain-
-path body on macOS and a security-scoped body on iOS behind the same interface.
+on macOS — other applications. One import per platform gives you the full
+platform-true set; the shared tools present identical schemas on both, so
+prompts, evals, and recorded runs transfer between your Mac and iPhone apps.
+File tools have a plain-path body on macOS and a security-scoped body on iOS
+behind the same interface. Tools that need user permission document the exact
+usage-description keys the host app must carry.
 
 ```swift
+import ToolKitForMac   // or ToolKitForiOS
+
 let session = LanguageModelSession(model: claude,
                                    tools: [ReadFile(), SearchContacts()])
 // No runtime required — ToolKit works with any Foundation Models provider.

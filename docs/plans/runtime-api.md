@@ -177,10 +177,16 @@ DAG is the contract; a module that grows a second job is a bug:
               │         coordinator,        ▲                  ▲
               │         tool host    ┌──────┼────────┬─────┐   │
               │              ▲       │      │        │     │   │
-              │              │  ToolKitFiles ToolKitWeb ToolKitPIM ToolKitMac
+              │              │  ToolKitFiles ToolKitWeb ToolKitPIM ToolKitMacControl
               │              │  (Foundation) (URLSession) (Contacts, (AppleEvents/
               │              │                            EventKit,  ScriptingBridge,
               │              │                            Reminders) macOS-only)
+              │              │        ▲          ▲           ▲          ▲
+              │              │        └────┬─────┴─────┬─────┴──────────┘
+              │              │      ToolKitForMac   ToolKitForiOS   (umbrella products:
+              │              │      Files+Web+PIM   Files+Web+PIM    what apps import;
+              │              │      +MacControl     +iOS-only target  domain targets are
+              │              │                      when one exists   where code lives)
               │              │
               │        Replay / Evals ──▶ RuntimeTesting
               │              ▲
@@ -209,9 +215,18 @@ Rules the DAG encodes:
   Info.plist keys and field App Review. Each ToolKit tool documents its required
   keys and entitlements; that per-tool obligation is why ToolKit products may
   graduate to their own release cadence (and package) after 1.0.
-- **Platform divergence lives in implementations, not interfaces**: `read_file`
-  is one spec with a macOS body (plain paths) and an iOS body (security-scoped
-  URLs); ToolKitMac is the only platform-exclusive product.
+- **Platform umbrellas over domain targets** (decided 2026-07-19, Toni: two
+  platform toolkits are the developer-facing shape). Apps import
+  `ToolKitForMac` or `ToolKitForiOS` — one import, platform-true contents.
+  Code lives in domain *targets* because the overlap is the expensive part:
+  PIM and Web are near-identical across platforms; the file tools share their
+  guts (docx parsing, paging, budgets) and differ only at access acquisition
+  (plain paths on macOS, security-scoped URLs on iOS). Domain targets own the
+  tool *schemas*, so `read_file` presents identically on both platforms and
+  prompts, evals, and recorded replays transfer. `ToolKitMacControl` is
+  macOS-only; an iOS-only target is created when the first real iOS-only tool
+  exists, not before. Individual domain products can be exposed for
+  specialists at zero cost.
 - Tool *specs* (what each tool does, its schema, its budgets) are researched and
   written per tool before it's built — the file/web specs in
   [tool-architecture.md](tool-architecture.md) §3 are the template; PIM and Mac

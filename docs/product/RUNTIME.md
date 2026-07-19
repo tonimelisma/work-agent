@@ -71,10 +71,12 @@ Foundation Models:
   as data (annotations), not as a competing protocol.
 - **The ToolKit products — native tool implementations** (Toni, 2026-07-18: "one
   of the most valuable parts of this SPM," and "absolutely not in the app"):
-  files, web, PIM (Contacts/EventKit/Reminders), and macOS app control, as
-  small platform-conditional products depending only on Apple frameworks and
-  the tool vocabulary — usable with any model package, runtime optional. The
-  structure and DAG: [plans/runtime-api.md](../plans/runtime-api.md) §6.
+  files, web, PIM (Contacts/EventKit/Reminders), and macOS app control —
+  imported as **`ToolKitForMac` / `ToolKitForiOS`** umbrella products (one
+  import per platform, decided 2026-07-19) over shared domain targets that own
+  the tool schemas. Apple-framework dependencies only; usable with any model
+  package, runtime optional. Structure and DAG:
+  [plans/runtime-api.md](../plans/runtime-api.md) §6.
 - **Provider executors as batteries — and as the fidelity path**:
   OpenAI-compatible and Anthropic executors with full provider state (reasoning
   round-trips, thought signatures) *and* the capabilities the FM API doesn't
