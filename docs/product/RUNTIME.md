@@ -75,10 +75,13 @@ Foundation Models:
   small platform-conditional products depending only on Apple frameworks and
   the tool vocabulary — usable with any model package, runtime optional. The
   structure and DAG: [plans/runtime-api.md](../plans/runtime-api.md) §6.
-- **Provider executors as batteries**: OpenAI-compatible and Anthropic
-  executors with full-fidelity provider state (reasoning round-trips, thought
-  signatures) — plus acceptance of *any* injected `LanguageModel`, vendor
-  packages included.
+- **Provider executors as batteries — and as the fidelity path**:
+  OpenAI-compatible and Anthropic executors with full provider state (reasoning
+  round-trips, thought signatures) *and* the capabilities the FM API doesn't
+  model — typed executor options for provider-native features, namespaced
+  conversation extensions, and direct clients for non-conversational APIs
+  ([plans/runtime-api.md](../plans/runtime-api.md) §4). Plus acceptance of *any*
+  injected `LanguageModel`, vendor packages included.
 - **A public conformance suite**: scripted-model semantics tests any provider
   package can be certified against — the ecosystem hook.
 - **Local-first observability**: full-fidelity traces, deterministic replay,
@@ -95,7 +98,7 @@ Foundation Models:
   real need, no RAG/vector/memory stack by default.
 - Not a cloud product — no control plane, no required account; LangSmith-class
   *hosted* monitoring is explicitly out (a local-first studio is a possible
-  later product, see §6).
+  later product, see §7).
 - Not multi-agent-first — teams/handoffs wait for evidence a single durable
   agent is insufficient.
 
@@ -141,13 +144,37 @@ keeps two escape hatches: provider-native options on executor configuration, and
 a separate direct-API surface for non-conversational endpoints (batches, file
 stores) that don't belong in a transcript.
 
-## 6. Open questions
+## 6. Evidence and falsifiers
+
+Recorded 2026-07-18 so the bet stays honest:
+
+- **Demand is a thesis, not a fact.** No one has asked for "durable agent runs in
+  Swift" in those words — the platform is weeks old. The signals that exist:
+  developers on Apple's forums hitting runtime-shaped pain (sessions hanging,
+  undocumented background-task rules, unreliability), `AnyLanguageModel` at ~900
+  stars in weeks proving appetite at the model layer, and no competitor at the
+  runtime layer. Honest proof arrives two ways we control: developers asking
+  *how* the reference apps do durable runs, and pain reports on the vendor
+  packages' issue trackers. Until then the hedge is structural — the runtime
+  serves Work Agent first, so the work is not wasted if the developer market
+  never materializes.
+- **The FM commitment is strategy-justified, and has a falsifier.** For the app
+  alone, Foundation Models' case is modest: good types, token counting, and a
+  session loop that needed four documented workarounds — a custom loop on our
+  own adapters would also have served. FM wins because the *runtime product's*
+  market is FM developers and the ecosystem is standardizing on Apple's
+  vocabulary. If the SPM bet dies — no demand, or Apple absorbs the runtime
+  layer — the app should revisit dropping FM; the swappable loop strategy and
+  our own executors are what keep that revisit cheap.
+
+## 7. Open questions
 
 Decided by Toni when they block something, not before:
 
 - **Name.** "AgentKit" is a working label only; the public name is unchosen.
-- **License and openness.** Open source, source-available, or private — undecided,
-  and it shapes the conformance-suite ecosystem play.
+- ~~License and openness~~ — **decided 2026-07-18: MIT** ("create a MIT license
+  too, Toni Melisma (c) 2026"); the repo carries [LICENSE](../../LICENSE). Open
+  source, which makes the conformance-suite ecosystem play viable.
 - **Publication structure.** Same repo and workspace, decided (§5); root-package
   restructure vs repo split happens at the release gate.
 - **iOS depth.** Suspension-safe durable runs are the committed *design* target

@@ -115,6 +115,30 @@ Accepted by Toni ("sounds good") on 2026-07-18:
   tool-error behavior, metadata round-trip). Uncertified models run;
   cross-provider failover between uncertified executors is flagged honestly.
 
+### Provider extensions beyond the FM API — the three-tier schema
+
+Decided 2026-07-18 (Toni: "for Claude and Gemini their FM API doesn't cover all
+their functionality. so sometimes we'll need to go direct to the API"). The FM
+protocol is a common denominator; full fidelity is the executors' job, in three
+tiers by where the capability lives:
+
+1. **Request-level** (cache control, thinking budgets, provider server-side
+   tools, effort levels beyond `ReasoningLevel`): typed options on each
+   executor's configuration — e.g. `AnthropicExecutor.Options(cacheControl:,
+   serverTools:)` — overridable per run. Statically typed, never stringly.
+2. **Conversation-level** (reasoning content, thought signatures, provider block
+   identity): Apple `Transcript` metadata, reasoning signatures, and custom
+   segments under a **provider-namespaced key convention** (`com.anthropic.…`)
+   with an ownership tag — the tag is what failover stripping keys on
+   (POC-proven live, DeepSeek → Anthropic).
+3. **Non-conversational APIs** (batches, file stores): a separate plain direct
+   client surface per provider. Never contorted into a transcript.
+
+The principle underneath: **the wire belongs to the executor, not to Apple.** FM
+types are how state is held; the executor decides what is sent — which is also
+the escape valve for `GenerationSchema`'s strict subset (an executor may send a
+fuller wire schema than Apple's type expresses, with host-side validation).
+
 ## 5. DX commitments
 
 - **Progressive disclosure, one runtime.** The simple call and the advanced host

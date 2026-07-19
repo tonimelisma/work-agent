@@ -183,7 +183,7 @@ and the dependency arrows are the only ordering claimed:
 | **Permissions and approvals** | Real use showing what needs gating (increment 7) | The deferred approval model, designed against observed friction rather than imagined risk |
 | **MCP** | Tool host proven (increment 5) | MCP client + the schema degradation ladder (runtime-api.md §4) |
 | **Runtime API hardening** | Increments 4–6 stable | Public-API review against runtime-api.md, DocC, `Examples/`, conformance suite made public |
-| **Extraction and publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §6) | Package restructure-or-split, name and license decisions, first public tag |
+| **Extraction and publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §7) | Package restructure-or-split, the name decision (license is decided: MIT), the publication README per [plans/package-readme.md](../plans/package-readme.md), first public tag |
 | **iOS tool modules + iOS reference app** | Runtime published or near it; macOS app proving it | The sibling product: scoped-access tools, suspension-safe durable runs (see deferred table) |
 | **The studio** | Unscheduled candidate (RUNTIME.md §6) | Local-first trace/replay/eval app, generalized from Work Agent's trace UI |
 
