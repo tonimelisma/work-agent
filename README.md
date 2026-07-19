@@ -20,7 +20,7 @@ Each library stands alone, and every dependency is an Apple framework.
 | **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders; Mac app control on macOS. Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **RuntimeCore** | Agent runs that survive crash, relaunch, and suspension: append-only journal, checkpoints, resumable interrupts, composable run limits, retry, and cross-provider failover mid-run | FoundationModels |
 | **RuntimeTesting** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
-| **Replay / Evals** | Recorded runs replayed against new models, prompts, or providers | RuntimeCore + RuntimeTesting |
+| **Traces / Replay / Evals** | Every run is a complete typed trace — each attempt, tool call, result, token, and cost — stored locally, renderable in your UI, replayable against new models or prompts | RuntimeCore + RuntimeTesting |
 | **MCP** | Model Context Protocol servers as tools, with explicit schema conversion | The one external dependency, opt-in |
 
 Take one library or all of them. ToolKit works with a vendor's model package and
@@ -140,11 +140,19 @@ The same scripted-model suite doubles as a conformance kit: any
 `LanguageModel` package can be certified against the runtime's semantics —
 cancellation, retry atomicity, tool-error behavior, state round-trips.
 
-## Replay and evals
+## Traces, replay, and evals
 
-Every run's journal is a complete recording. Replay one against a different
-model, provider, or prompt and diff the trajectories; keep a directory of
-recorded cases as a regression suite that runs offline.
+Every run produces a complete typed trace: run → turn → model attempt → tool
+invocation → result, with usage, timing, cost, and full tool output before any
+truncation. Foundation Models exposes live hooks but keeps no history — and
+its response snapshots coalesce streaming events, so this trace is captured at
+the executor channel, losslessly. It's a local structure your app can render
+("show me exactly what the agent did"), not a telemetry feed; nothing leaves
+the machine.
+
+A trace is also a recording. Replay one against a different model, provider,
+or prompt and diff the trajectories; keep a directory of recorded cases as a
+regression suite that runs offline in CI.
 
 ## MCP
 
