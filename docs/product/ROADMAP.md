@@ -52,14 +52,25 @@ unsupported keywords reported with path and fallback, never silently flattened),
 with **Gmail and Outlook MCP servers as the proving integrations** — real-world
 schema corpora, OAuth handled by the servers, not by us.
 
-## 4. PDF creation
+## 4. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
-Toni, 2026-07-19: "PDFs too." We read PDFs (FR-074); a general work assistant must
-also *produce* them. A ToolKit document-creation tool built on PDFKit — native,
-no code-execution sandbox needed (the competitors all route document generation
-through sandboxed code; we don't have to). Whether docx/xlsx *creation* joins it
-is an open recommendation from the 2026-07-19 tool-set comparison, not yet
-decided.
+Toni, 2026-07-19: "PDFs too", then "Yes all office doc creation too ASAP. Google
+via MCP if available. Docx xlsx pptx locally." A `ToolKitDocuments` product:
+
+- **PDF** — PDFKit, native.
+- **docx / xlsx / pptx creation, locally** — all three are OOXML zip containers;
+  the same ZIPFoundation path that reads docx writes them. Native Swift, no
+  code-execution sandbox (the competitors all route document generation through
+  sandboxed code; we don't have to — a differentiator worth stating in the
+  README when built).
+- **Google Docs/Sheets/Slides via MCP, if available** — rides item 3's MCP
+  foundation; use existing Google Workspace MCP servers, OAuth theirs. If no
+  usable server exists at planning time, the local formats ship and Google
+  waits — we do not build our own Google OAuth integration.
+
+Per-format tool specs (templates, styling scope, append-vs-create semantics) are
+researched during planning; xlsx/pptx *reading* is the cheap adjacency to settle
+in the same plan.
 
 ## 5. Cold-provider conformance — the neutrality proof
 
