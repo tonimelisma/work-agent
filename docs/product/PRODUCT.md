@@ -88,14 +88,14 @@ package, runtime optional.
   model-followable truncation notices, docx text extraction (a .docx is a zip),
   read-before-write/edit ledgers, native Swift regex search — no bundled binaries
   ("I generally prefer native Swift").
-- **FR-080 — Implemented.** `fetch_url`: HTML→Markdown, paged, SSRF-guarded
+- **FR-082 — Implemented.** `fetch_url`: HTML→Markdown, paged, SSRF-guarded
   (private/link-local/metadata hosts denied post-resolution). *Why paged markdown,
   no extraction model:* Toni chose it — zero per-fetch model cost.
-- **FR-081 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
+- **FR-083 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
   — provider-hosted search plus a neutral backend was Toni's call; Brave chosen as
   the conventional-SERP fallback). Tested against stubbed responses; a live key was
   never supplied.
-- **FR-082 / FR-083 — Implemented in package, not yet surfaced.** `ask_user` and
+- **FR-080 / FR-081 — Implemented in package, not yet surfaced.** `ask_user` and
   `update_plan`, validated against presenter/recorder doubles; the app UI that
   would show them doesn't exist yet.
 - Umbrella product `ToolKitForMac` re-exports the platform-true set. *Why umbrellas
@@ -111,6 +111,32 @@ package, runtime optional.
   suite (cancellation, revert-on-failure, concurrent tools, cross-provider
   reconstruction) runs on it. *Why first-class:* agent code is ordinarily
   untestable, and test doubles as public API is the package's sharpest DX bet.
+
+## Implemented requirements — verbatim, numbered, traced
+
+The testable statements, exactly as minted (NFR-005: every requirement traceable to
+code and tests by ID — `rg <ID>` finds all three). Trace column verified 2026-07-19
+by grep; a ✗ is an honest gap, not an oversight.
+
+| ID | Statement | Code | Tests |
+|---|---|:-:|:-:|
+| FR-001 | The system shall perform all model inference through a provider abstraction, such that no feature depends on a specific model vendor. | ✓ | ✗ — no test carries the ID; the increment-6 cold-provider test is its proof |
+| FR-006 | If the active provider becomes unavailable mid-run, then the system shall preserve run state and automatically resume the run on a designated fallback provider, recording the switch in the trace. | ✓ | ✓ |
+| FR-074 | The system shall provide a `read_file` tool that reads text, image, PDF, and docx content from a path, paging output that exceeds the model-facing budget. | ✓ | ✓ |
+| FR-075 | The system shall provide a `list_folder` tool that lists a directory's entries, optionally recursive to a bounded depth. | ✓ | ✓ |
+| FR-076 | The system shall provide a `find_files` tool that matches file paths by glob pattern under a root. | ✓ | ✓ |
+| FR-077 | The system shall provide a `search_files` tool that greps file contents by regex, implemented in native Swift with no bundled binary. | ✓ | ✓ |
+| FR-078 | The system shall provide a `write_file` tool that creates or atomically replaces a file's contents. | ✓ | ✓ |
+| FR-079 | The system shall provide an `edit_file` tool that performs an exact-match string replacement, requiring the file to have been read first. | ✓ | ✓ |
+| FR-080 | The system shall provide an `ask_user` tool that suspends the run to ask the user 1–4 questions with 2–4 options each plus free text, resuming on answer. | ✓ | ✓ |
+| FR-081 | The system shall provide an `update_plan` tool that records an ordered list of steps with exactly one in progress. | ✓ | ✓ |
+| FR-082 | The system shall provide a `fetch_url` tool that fetches a web page and returns it as paged Markdown, with no extraction model call. | ✓ | ✓ |
+| FR-083 | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | ✓ | ✓ stubbed — never live |
+| NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
+| NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✗ — proven by the dual-platform CI build, no single test names it |
+
+App-side implemented requirements (FR-050–073 range, NFR-002/003/006–009) are
+tabled the same way in [../app/APP.md](../app/APP.md) and leave with the app.
 
 ## Known gaps, named
 

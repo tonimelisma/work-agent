@@ -49,6 +49,41 @@ multi-user are deliberately absent.
 - **NFR-002 / NFR-003 / NFR-006** — state stays on the Mac; Developer ID + notarized
   distribution; UI responsive during runs.
 
+## Implemented requirements — verbatim, numbered, traced
+
+Trace column grep-verified 2026-07-19 (`rg <ID>` finds record, code, tests). UI
+features carry no tests by standing policy (no UI tests, ever); those show the
+policy, not a ✗.
+
+| ID | Statement | Code | Tests |
+|---|---|:-:|:-:|
+| FR-050 | The system shall allow the user to configure one or more model providers, each by its API key. | ✓ | ✓ |
+| FR-069 | The system shall let the user add a provider by pasting its API key, and remove it. | ✓ | ✓ |
+| FR-051 | The system shall present available providers and models from a registry rather than requiring the user to type identifiers. | ✓ | ✓ |
+| FR-052 | The system shall store provider credentials in the macOS Keychain, and shall not write them to preferences, logs, or application state. | ✓ | ✓ |
+| FR-054 | If the model registry cannot be fetched, then the system shall fall back to its bundled snapshot and remain fully usable. | ✓ | ✓ |
+| FR-055 | The system shall allow the user to designate which configured provider and model is used, chosen in the chat rather than in settings. | ✓ | ✓ |
+| FR-056 | When the user supplies a credential, the system shall verify it against the provider before reporting the provider as usable. | ✓ | ✓ |
+| FR-057 | The system shall allow the user to remove a configured provider, and shall delete its stored credential when they do. | ✓ | ✓ |
+| FR-061 | The system shall offer only an explicit curated set of models, and shall not present any other model. | ✓ | ✓ |
+| FR-062 | The system shall offer only first-party providers, and shall not present resellers or aggregators. | ✓ | ✓ |
+| FR-063 | The system shall persist a complete trace of everything it does, including all details, regardless of what is displayed. | ✓ | ✓ |
+| FR-065 | The system shall display both model reasoning and tool calls in a user-friendly form, rather than as raw protocol detail. | ✓ | UI policy |
+| FR-066 | The system shall allow the user to turn the display of reasoning traces on or off. | ✓ | UI policy |
+| FR-068 | The main window shall present a chat interface with message history above a text input at the bottom. | ✓ | UI policy |
+| FR-070 | When the user sends a message, the system shall send the conversation to the selected model and stream the reply. | ✓ | ✓ |
+| FR-071 | The system shall support multiple concurrent conversations, presented as a list the user can switch between, each able to have its own durable run in flight. | ✓ | UI policy |
+| FR-072 | When the app quits while a run is in flight, the run shall pause at its next safe checkpoint; on the next launch the system shall present it as paused and require the user to resume it explicitly, rather than resuming automatically. | ✓ | UI policy |
+| FR-073 | A conversation, and the status of any run in flight within it, shall survive an app restart. | ✓ | ✓ |
+| NFR-002 | Task state and history shall reside on the Mac. | by construction — no server exists | — |
+| NFR-006 | The user interface shall remain responsive while a task is running. | by construction — runs are off-main | — |
+| NFR-007 | Registry decoding shall be lenient: unknown fields ignored, and an entry that fails to decode shall be skipped rather than fail the load. | ✓ | ✓ |
+| NFR-008 | The system shall not block launch on a network request. | ✓ | ✗ — no test names it |
+| NFR-009 | The Work Agent app shall require macOS 27 or later and build on the macOS 27 Foundation Models APIs. | build setting (`MACOSX_DEPLOYMENT_TARGET`) | — |
+
+Still `Specified`, unbuilt: FR-005, FR-060 (surface), FR-064, FR-067, NFR-003
+(distribution — signing/notarization not yet performed).
+
 ## App decisions and rationale (formerly ADR-0003, ADR-0005, ADR-0008)
 
 - **Developer ID, never Mac App Store.** The App Sandbox forbids what the product
