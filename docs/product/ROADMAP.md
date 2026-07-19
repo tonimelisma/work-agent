@@ -38,7 +38,8 @@ send → quit → resume path.
 ## 3. Cold-provider conformance — the neutrality proof
 
 Add a provider we did not design against and make every tool work through it
-unchanged, executor added without touching anything else. Tool calling is where
+unchanged, executor added without touching anything else (**NFR-001**: adding a
+provider requires no changes outside its executor and registration). Tool calling is where
 neutrality actually bites (wire formats differ; provider state differs); passing
 this cold is the package's core claim made falsifiable. Failing it honestly rewrites
 the claim.

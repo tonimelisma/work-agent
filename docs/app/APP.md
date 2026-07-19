@@ -33,7 +33,16 @@ multi-user are deliberately absent.
   providers, sixteen models ("start with all of the ones I said"; "no resellers for
   now"): OpenAI GPT-5.6 ×4, Anthropic opus/sonnet/fable, Kimi K3, Grok 4.5,
   GLM-5.2, Muse Spark 1.1, Gemini 3.5 Flash, DeepSeek V4 Pro, MiniMax-M3, Inkling,
-  Qwen 3.7 Max. Live-verification status varies by key funding — see ENGINEERING.
+  Qwen 3.7 Max. **Live-verification status (2026-07-19):** streaming verified —
+  DeepSeek, Anthropic, Google, Moonshot, Alibaba; key valid but unfunded — OpenAI
+  (429), MiniMax (402); **Zhipu/GLM needs custom auth** — rejects a raw bearer
+  token, appears to require JWT signing from its `id.secret` key; a third auth
+  style, flagged and unbuilt. No keys held: xAI, Meta, Thinking Machines — in the
+  menu, unverifiable until keyed.
+- **Honesty flag carried from the old spec:** FR-052, FR-054, FR-056, FR-057,
+  NFR-006, NFR-007, NFR-008 were marked *inferred — standard practice, seen
+  without objection but never explicitly confirmed by Toni*. That flag survives
+  the restructure; they remain his to veto.
 - **FR-063 / FR-065 / FR-066** — full traces persisted regardless of display;
   reasoning and tool calls shown user-friendly; reasoning display toggleable
   ("we store traces of everything… showcase them in the UI in a nice UI too").

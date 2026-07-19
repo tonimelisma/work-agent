@@ -31,6 +31,11 @@ ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
   Toni accepted: "we'll have three layers."
 - **NFR-010 — Implemented.** The package builds and its suite passes on iOS 27 and
   macOS 27 both.
+- **The FR-001 / FR-060 tension is the design, on purpose.** FR-001 says the
+  *package* never depends on one vendor; FR-060 (roadmap) says a *model* is never
+  dumbed down to the common denominator. Both hold: any provider works, and each
+  provider lights up everything it can do. What we never do is delete a capability
+  because a competitor lacks it.
 
 ## Executors: ten cloud providers behind the protocol
 

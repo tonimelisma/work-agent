@@ -122,7 +122,9 @@ dead decision.
 ## Traceability
 
 Permanent, flat IDs: `FR-001` / `NFR-001`, minted during planning from Toni's words,
-recorded in PRODUCT.md when implemented. **Never reused, never renumbered**; dropped
+written as individually testable [EARS](https://alistairmavin.com/ears/)-style
+statements (*The system shall… / When X, the system shall…*), recorded in PRODUCT.md
+when implemented. **Never reused, never renumbered**; dropped
 IDs are deleted outright and PRODUCT.md tracks the next-free counters. In code, at
 the point of satisfaction:
 
