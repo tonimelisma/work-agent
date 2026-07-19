@@ -686,8 +686,11 @@ Toni made the decision; ADR-0006 and the implementation plans apply these change
    `LanguageModelExecutor` implementations built from the existing adapters.
 3. Remove the bespoke basic `AgentLoop`; introduce `TaskCoordinator`, which owns
    policy and drives/rebuilds a `LanguageModelSession`.
-4. Keep `Tool`, `ToolContext`, `ToolRunner`, registry, trace, and output budgets, but
-   add `WorkAgentToolBridge: FoundationModels.Tool`.
+4. Tools stay plain `FoundationModels.Tool`s; the runtime instruments them via
+   generic wrappers and carries effects/idempotency as `ToolAnnotations` data —
+   see [../plans/runtime-api.md](../plans/runtime-api.md) §3, which supersedes the
+   originally listed `WorkAgentToolBridge` host-contract design. Registry, trace,
+   and output budgets survive inside the wrapper pipeline.
 5. Express per-turn tools/instructions/model through a dynamic profile. Use
    `historyTransform` as the model-facing context assembler, fed by Work Agent's
    canonical state and token budget.

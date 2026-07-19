@@ -71,7 +71,9 @@ The package owns:
   checkpoint atomicity defeats its purpose;
 - retry, fallback, circuit-breaker and composable run-limit policy;
 - context assembly and model-facing history projection;
-- a richer host tool contract, tool execution and Apple `Tool` bridging;
+- tool instrumentation and annotations — plain `FoundationModels.Tool`s run through
+  generic wrappers, with effects/idempotency as `ToolAnnotations` data
+  ([runtime-api.md](runtime-api.md) §3; no second tool protocol);
 - provider executors, conformance fixtures, scripted models and fault injection;
 - structured local runtime events and optional exporter protocols; and
 - cross-provider replay/evaluation helpers.
@@ -190,11 +192,14 @@ Retry policy distinguishes:
 
 ## 6. Tool host
 
-Keep the richer host contract from [tool-architecture.md](tool-architecture.md): effect,
-idempotency, resources, output budget, artifacts and trace behavior are runtime policy,
-not fields Apple should enforce.
+Tools are plain `FoundationModels.Tool`s — there is no second tool protocol
+([runtime-api.md](runtime-api.md) §3, superseding the older host-contract sketch in
+tool-architecture.md §2). Effect, idempotency, resources, output budget, artifacts
+and trace behavior are runtime policy carried as `ToolAnnotations` data (policy
+table → modifier → optional refinement conformance → MCP hints → conservative
+default), not fields Apple should enforce and not requirements on the tool author.
 
-`WorkAgentToolBridge` exposes a host tool as `FoundationModels.Tool`. `ToolRunner`:
+The runtime hands the session `InstrumentedTool<Base>` wrappers, which per call:
 
 1. registers the invocation durably before execution;
 2. applies resource-aware scheduling rather than assuming Apple's parallel starts are

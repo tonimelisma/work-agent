@@ -288,7 +288,9 @@ final class MCPServerConnection {           // one per configured server
 }
 struct MCPTool: Tool {
     // spec: name namespaced "\(serverLabel).\(toolName)"; parameters passed through
-    //       (their JSON Schema is already what providers want — validate, don't reinterpret)
+    //       (JSON Schema must survive GenerationSchema conversion — strict subset,
+    //        measured; unsupported keywords go through the degradation ladder in
+    //        runtime-api.md §4 rather than being silently flattened)
     // invoke: tools/call; content blocks mapped to ToolOutput; isError passthrough
     // effect: .consequential by default — a remote tool is assumed side-effectful
     //         unless its annotations say readOnlyHint (MCP tool annotations, trust-but-verify)
