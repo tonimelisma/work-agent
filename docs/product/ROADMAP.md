@@ -102,28 +102,37 @@ goes to ADR-0006.
 **Done when:** ADR-0006 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
-## Increment 4 — The three-layer runtime and a durable conversation
+## Increment 4 — The three-layer runtime and a durable conversation ✅
 
-Create the one deliberate SPM boundary from ADR-0002: a native Swift agent-runtime
-package supporting iOS 27 and macOS 27 Foundation Models and any injected
-`LanguageModel`. Adapt the two shipped cloud-provider transports to
-`LanguageModelExecutor`, drive `LanguageModelSession` from a durable coordinator, and
-integrate it into the macOS app against a provider configured in increment 2. The app
-owns task persistence and presentation; the package owns provider-neutral execution.
-No general work tools yet.
+Created the one deliberate SPM boundary from ADR-0002: **AgentKit**, a local Swift
+package (RuntimeCore, Executors, ToolVocabulary, RuntimeTesting) supporting iOS 27 and
+macOS 27 Foundation Models and any injected `LanguageModel`. The POC's proven cloud
+executors migrated into `Executors`; `TaskCoordinator` drives `LanguageModelSession`
+durably with an append-only journal, checkpoints, and automatic cross-provider failover
+(FR-006); the macOS app integrates it with a SwiftData-backed (ADR-0008) conversation
+sidebar (FR-071), pause-and-offer-resume on quit (FR-072), and restart durability
+(FR-073). The `Experiments/FoundationModelsPOC/` spike is deleted — migrated, not
+duplicated.
+
+Toni's answers to the plan's §10 open questions, given at this increment's DOR:
+multiple concurrent conversations with a sidebar (not one), pause-and-offer-resume
+(not auto-resume) on quit, and automatic (not manual) failover — recorded as FR-071,
+FR-072, and the FR-006 update in REQUIREMENTS.md.
 
 The build plan is [docs/plans/agent-loop-implementation.md](../plans/agent-loop-implementation.md);
 the API it must converge on is [docs/plans/runtime-api.md](../plans/runtime-api.md);
-the product frame is [RUNTIME.md](RUNTIME.md). The plan's §10 lists the open
-questions this increment's DOR puts to Toni.
+the product frame is [RUNTIME.md](RUNTIME.md).
 
-**Done when:** a real model call crosses all three layers, its result lands in a
-conversation that survives an app restart, and the conversation's status is
-observable while a run is in flight. The package has no dependency on the app target
-or SwiftUI, its deterministic conformance suite builds and passes for macOS and iOS,
-a gated eligible-device test exercises `SystemLanguageModel`, and the
-durable-conversation FR IDs are written at this increment's DOR from whatever Toni
-actually specifies.
+**Done, with two named gaps.** A real model call crosses all three layers, lands in a
+conversation that survives an app restart, and the conversation's status is observable
+while a run is in flight. AgentKit has no dependency on the app target or SwiftUI; its
+25-test conformance suite builds and passes on both macOS and iOS. Not done: **no gated
+on-device `SystemLanguageModel` test was written** (no eligible-device cycle exists yet —
+increment 3's scripted on-device pass is the closest evidence so far), and **the
+interactive UI path (send, stream, quit mid-run, relaunch, resume) was not exercised in
+the running app** — screen-control access to drive it was declined; the app was only
+confirmed to launch and quit cleanly. Both are named in
+[ENGINEERING.md](../engineering/ENGINEERING.md), not silently skipped.
 
 ## Increment 5 — First tools, tested
 

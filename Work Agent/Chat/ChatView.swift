@@ -2,15 +2,46 @@
 //  ChatView.swift
 //  Work Agent
 //
-//  The main window: a chat. Messages scroll above, composer pinned at the bottom.
+//  The main window: a sidebar of conversations (FR-071) plus the selected
+//  conversation as a chat — history above, composer pinned at the bottom.
 //
 
 import SwiftUI
+import SwiftData
 
-// REQ: FR-068 — the main window is a chat: history above, text input at the bottom.
+// REQ: FR-068, FR-071 — the main window is a chat with a conversation sidebar.
 struct ChatView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(ConversationsStore.self) private var conversationsStore
+    @Query private var conversations: [ConversationRecord]
+
+    var body: some View {
+        NavigationSplitView {
+            ConversationListView()
+        } detail: {
+            if let record = conversations.first(where: { $0.id == conversationsStore.selectedID }) {
+                ChatDetailView(record: record)
+            } else {
+                noSelectionState
+            }
+        }
+    }
+
+    private var noSelectionState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "text.bubble").font(.system(size: 32)).foregroundStyle(.tertiary)
+            Text("No conversation selected").font(.title3.weight(.medium))
+            Button("New Chat") { _ = conversationsStore.create(in: modelContext) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct ChatDetailView: View {
+    let record: ConversationRecord
     @Environment(ProviderStore.self) private var store
     @Environment(RegistryLoader.self) private var registryLoader
+    @Environment(RuntimeEnvironment.self) private var runtime
     @Environment(\.openSettings) private var openSettings
 
     @State private var model: ChatViewModel?
@@ -23,11 +54,9 @@ struct ChatView: View {
                 Color.clear
             }
         }
-        .task {
+        .task(id: record.id) {
             if registryLoader.registry == nil { await registryLoader.loadLocal() }
-            if model == nil {
-                model = ChatViewModel(store: store, registryLoader: registryLoader)
-            }
+            model = ChatViewModel(record: record, store: store, registryLoader: registryLoader, runtime: runtime)
         }
     }
 
@@ -35,7 +64,10 @@ struct ChatView: View {
     private func content(_ model: ChatViewModel) -> some View {
         @Bindable var model = model
         VStack(spacing: 0) {
-            if conversationIsEmpty(model) {
+            if model.isPaused {
+                pausedBanner(model)
+            }
+            if model.messages.isEmpty {
                 emptyState
             } else {
                 transcript(model)
@@ -48,17 +80,26 @@ struct ChatView: View {
                 Button {
                     model.clear()
                 } label: {
-                    Label("New Chat", systemImage: "square.and.pencil")
+                    Label("Clear", systemImage: "trash")
                 }
-                .disabled(model.conversation.messages.isEmpty)
+                .disabled(model.messages.isEmpty)
                 .help("Clear the conversation")
             }
         }
         .frame(minWidth: 480, minHeight: 400)
     }
 
-    private func conversationIsEmpty(_ model: ChatViewModel) -> Bool {
-        model.conversation.messages.isEmpty
+    // REQ: FR-072 — a run paused by an app quit is never resumed silently.
+    private func pausedBanner(_ model: ChatViewModel) -> some View {
+        HStack {
+            Image(systemName: "pause.circle.fill").foregroundStyle(.orange)
+            Text("Paused" + (model.pausedExecutorID.map { " on \($0)" } ?? "") + " when the app quit.")
+                .font(.callout)
+            Spacer()
+            Button("Resume") { model.resume() }
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.1))
     }
 
     private var emptyState: some View {
@@ -89,7 +130,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    ForEach(model.conversation.messages) { message in
+                    ForEach(model.messages) { message in
                         MessageRow(message: message, showReasoning: model.showReasoning)
                             .id(message.id)
                     }
@@ -97,10 +138,10 @@ struct ChatView: View {
                 }
                 .padding(16)
             }
-            .onChange(of: model.conversation.messages.last?.text) { _, _ in
+            .onChange(of: model.messages.last?.text) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(scrollAnchor, anchor: .bottom) }
             }
-            .onChange(of: model.conversation.messages.count) { _, _ in
+            .onChange(of: model.messages.count) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(scrollAnchor, anchor: .bottom) }
             }
         }

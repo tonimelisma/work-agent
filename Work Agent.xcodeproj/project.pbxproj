@@ -6,6 +6,16 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0BD2416FA5A2D8C985D09B61 /* ToolVocabulary in Frameworks */ = {isa = PBXBuildFile; productRef = BEBA44969775BF3177AD1ABD /* ToolVocabulary */; };
+		4C5B46E9A4FBA8DCA2531FE9 /* Executors in Frameworks */ = {isa = PBXBuildFile; productRef = 36D345B1AB395ECACC2D03CC /* Executors */; };
+		83BD4F2685A36990DD8A5836 /* RuntimeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7442429E838E481FB1DEE284 /* RuntimeCore */; };
+		9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */ = {isa = PBXBuildFile; productRef = D7254921814F5403D1B51BE9 /* ToolVocabulary */; };
+		B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */ = {isa = PBXBuildFile; productRef = A7CE4D8B9E87F09A046EDBE3 /* Executors */; };
+		CC1E45F19D0D15C5DDAD4AF8 /* RuntimeTesting in Frameworks */ = {isa = PBXBuildFile; productRef = DA6441EE862D3BF08E4C4272 /* RuntimeTesting */; };
+		E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 52A84503B19A465455F7AB9C /* RuntimeCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		3BA48E8F30081232004FE0C7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,27 +39,26 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		3BA48E8330081230004FE0C7 /* Work Agent */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Work Agent";
-			sourceTree = "<group>";
-		};
-		3BA48E9130081232004FE0C7 /* Work AgentTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Work AgentTests";
-			sourceTree = "<group>";
-		};
+		3BA48E8330081230004FE0C7 /* Work Agent */ = {isa = PBXFileSystemSynchronizedRootGroup; path = "Work Agent"; sourceTree = "<group>"; };
+		3BA48E9130081232004FE0C7 /* Work AgentTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = "Work AgentTests"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		3BA48E7E30081230004FE0C7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */,
+				B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */,
+				9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */,
 			);
 		};
 		3BA48E8B30081232004FE0C7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				83BD4F2685A36990DD8A5836 /* RuntimeCore in Frameworks */,
+				4C5B46E9A4FBA8DCA2531FE9 /* Executors in Frameworks */,
+				0BD2416FA5A2D8C985D09B61 /* ToolVocabulary in Frameworks */,
+				CC1E45F19D0D15C5DDAD4AF8 /* RuntimeTesting in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -90,6 +99,11 @@
 				3BA48E8330081230004FE0C7 /* Work Agent */,
 			);
 			name = "Work Agent";
+			packageProductDependencies = (
+				52A84503B19A465455F7AB9C /* RuntimeCore */,
+				A7CE4D8B9E87F09A046EDBE3 /* Executors */,
+				D7254921814F5403D1B51BE9 /* ToolVocabulary */,
+			);
 			productName = "Work Agent";
 			productReference = 3BA48E8130081230004FE0C7 /* Work Agent.app */;
 			productType = "com.apple.product-type.application";
@@ -111,6 +125,12 @@
 				3BA48E9130081232004FE0C7 /* Work AgentTests */,
 			);
 			name = "Work AgentTests";
+			packageProductDependencies = (
+				7442429E838E481FB1DEE284 /* RuntimeCore */,
+				36D345B1AB395ECACC2D03CC /* Executors */,
+				BEBA44969775BF3177AD1ABD /* ToolVocabulary */,
+				DA6441EE862D3BF08E4C4272 /* RuntimeTesting */,
+			);
 			productName = "Work AgentTests";
 			productReference = 3BA48E8E30081232004FE0C7 /* Work AgentTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -143,6 +163,9 @@
 			);
 			mainGroup = 3BA48E7830081230004FE0C7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3BA48E8230081230004FE0C7 /* Products */;
 			projectDirPath = "";
@@ -189,7 +212,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		3BA48E9E30081232004FE0C7 /* Debug configuration for PBXProject "Work Agent" */ = {
+		3BA48E9E30081232004FE0C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -253,7 +276,7 @@
 			};
 			name = Debug;
 		};
-		3BA48E9F30081232004FE0C7 /* Release configuration for PBXProject "Work Agent" */ = {
+		3BA48E9F30081232004FE0C7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -309,7 +332,7 @@
 			};
 			name = Release;
 		};
-		3BA48EA130081232004FE0C7 /* Debug configuration for PBXNativeTarget "Work Agent" */ = {
+		3BA48EA130081232004FE0C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -341,7 +364,7 @@
 			};
 			name = Debug;
 		};
-		3BA48EA230081232004FE0C7 /* Release configuration for PBXNativeTarget "Work Agent" */ = {
+		3BA48EA230081232004FE0C7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -373,7 +396,7 @@
 			};
 			name = Release;
 		};
-		3BA48EA430081232004FE0C7 /* Debug configuration for PBXNativeTarget "Work AgentTests" */ = {
+		3BA48EA430081232004FE0C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -394,7 +417,7 @@
 			};
 			name = Debug;
 		};
-		3BA48EA530081232004FE0C7 /* Release configuration for PBXNativeTarget "Work AgentTests" */ = {
+		3BA48EA530081232004FE0C7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -421,28 +444,73 @@
 		3BA48E7C30081230004FE0C7 /* Build configuration list for PBXProject "Work Agent" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3BA48E9E30081232004FE0C7 /* Debug configuration for PBXProject "Work Agent" */,
-				3BA48E9F30081232004FE0C7 /* Release configuration for PBXProject "Work Agent" */,
+				3BA48E9E30081232004FE0C7 /* Debug */,
+				3BA48E9F30081232004FE0C7 /* Release */,
 			);
 			defaultConfigurationName = Release;
 		};
 		3BA48EA030081232004FE0C7 /* Build configuration list for PBXNativeTarget "Work Agent" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3BA48EA130081232004FE0C7 /* Debug configuration for PBXNativeTarget "Work Agent" */,
-				3BA48EA230081232004FE0C7 /* Release configuration for PBXNativeTarget "Work Agent" */,
+				3BA48EA130081232004FE0C7 /* Debug */,
+				3BA48EA230081232004FE0C7 /* Release */,
 			);
 			defaultConfigurationName = Release;
 		};
 		3BA48EA330081232004FE0C7 /* Build configuration list for PBXNativeTarget "Work AgentTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3BA48EA430081232004FE0C7 /* Debug configuration for PBXNativeTarget "Work AgentTests" */,
-				3BA48EA530081232004FE0C7 /* Release configuration for PBXNativeTarget "Work AgentTests" */,
+				3BA48EA430081232004FE0C7 /* Debug */,
+				3BA48EA530081232004FE0C7 /* Release */,
 			);
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = AgentKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		36D345B1AB395ECACC2D03CC /* Executors */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = Executors;
+		};
+		52A84503B19A465455F7AB9C /* RuntimeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = RuntimeCore;
+		};
+		7442429E838E481FB1DEE284 /* RuntimeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = RuntimeCore;
+		};
+		A7CE4D8B9E87F09A046EDBE3 /* Executors */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = Executors;
+		};
+		BEBA44969775BF3177AD1ABD /* ToolVocabulary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = ToolVocabulary;
+		};
+		D7254921814F5403D1B51BE9 /* ToolVocabulary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = ToolVocabulary;
+		};
+		DA6441EE862D3BF08E4C4272 /* RuntimeTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = RuntimeTesting;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3BA48E7930081230004FE0C7 /* Project object */;
 	validationLevel = 1;
