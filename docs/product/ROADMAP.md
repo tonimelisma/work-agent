@@ -40,7 +40,28 @@ providers and GLM currently can't authenticate (rejects raw bearer; needs JWT
 signing from its `id.secret` key); a gated on-device `SystemLanguageModel` test on
 an eligible device; human verification of the send → quit → resume path.
 
-## 3. Cold-provider conformance — the neutrality proof
+## 3. Email via MCP: Gmail and Outlook — and the MCP foundation they force
+
+Toni, 2026-07-19: "Gmail and Outlook via MCP. No one uses the local mail app. Put
+them ASAP." Email is a headline capability of every general work assistant
+(Cowork's Gmail connector is tier one) and was previously absent from this list.
+The path is MCP, not Apple Events — so this item *is* the MCP item, pulled up from
+the bottom of the backlog: the MCP client behind a package trait, the explicit
+schema degradation ladder (`GenerationSchema` accepts a strict JSON Schema subset;
+unsupported keywords reported with path and fallback, never silently flattened),
+with **Gmail and Outlook MCP servers as the proving integrations** — real-world
+schema corpora, OAuth handled by the servers, not by us.
+
+## 4. PDF creation
+
+Toni, 2026-07-19: "PDFs too." We read PDFs (FR-074); a general work assistant must
+also *produce* them. A ToolKit document-creation tool built on PDFKit — native,
+no code-execution sandbox needed (the competitors all route document generation
+through sandboxed code; we don't have to). Whether docx/xlsx *creation* joins it
+is an open recommendation from the 2026-07-19 tool-set comparison, not yet
+decided.
+
+## 5. Cold-provider conformance — the neutrality proof
 
 Add a provider we did not design against and make every tool work through it
 unchanged, executor added without touching anything else (**NFR-001**: adding a
@@ -48,7 +69,7 @@ provider requires no changes outside its executor and registration). Tool callin
 is where neutrality actually bites; passing this cold makes the package's core
 claim falsifiable. Failing it honestly rewrites the claim.
 
-## 4. RuntimeCore completion — build the rest of what the README's core section says
+## 6. RuntimeCore completion — build the rest of what the README's core section says
 
 The durable-run promises not yet in code, verified against the tree 2026-07-19:
 
@@ -65,7 +86,7 @@ The durable-run promises not yet in code, verified against the tree 2026-07-19:
 - **Testing doubles completion** — virtual clocks and fixture recorders beside
   `ScriptedLanguageModel` (both promised in the README's testing section).
 
-## 5. Provider fidelity tiers
+## 7. Provider fidelity tiers
 
 The capabilities the FM API doesn't model, per the three-tier design
 (plans/runtime-api.md §4): typed executor options (prompt caching, server-side
@@ -76,7 +97,7 @@ we're not trying to neuter them" (FR-060). Includes the compaction strategies:
 tool-result clearing, summarize-and-fold, provider-native compaction (OpenAI
 `/responses/compact`, Anthropic context editing) behind one `RunPolicy`.
 
-## 6. Traces, replay, and evals — the README section with no code behind it
+## 8. Traces, replay, and evals — the README section with no code behind it
 
 The journal exists; the product on top of it doesn't. Typed trajectory reads
 (run → turn → attempt → tool invocation → result with usage/timing/cost), replay
@@ -85,7 +106,7 @@ diffing, and recorded-case regression suites that run offline in CI. This is the
 observability half of the vision and currently absent from everything but the
 README.
 
-## 7. ToolKit completion for the Mac
+## 9. ToolKit completion for the Mac
 
 The README's `ToolKitForMac` row promises Contacts, Calendar, and Reminders —
 `ToolKitPIM` (cross-platform domain target, schemas owned there) — and Mac app
@@ -94,38 +115,31 @@ target exists. Per-tool specs are researched and written as part of planning thi
 item ("we can research and figure out the specifics of the tools"). TCC
 usage-description obligations documented per tool.
 
-## 8. MCP
-
-MCP servers as tools, behind the explicit schema degradation ladder
-(`GenerationSchema` accepts a strict subset of JSON Schema; unsupported keywords
-reported with path and fallback, never silently flattened). The one external
-dependency, opt-in via package trait.
-
-## 9. API hardening
+## 10. API hardening
 
 Public-API review against plans/runtime-api.md, DocC, an `Examples/` folder
 (durable-run hello world, annotated tool, resume-after-kill), the conformance
 suite made public API — the certification hook for third-party model packages.
 
-## 10. Publication
+## 11. Publication
 
 Gated on OS 27 GA (beta ABI has already broken once between seeds — no stable tag
 before GA). The package name decision ("AgentKit" is a working label). License is
 decided: MIT. The README already follows plans/package-readme.md; at publication
 its claims must be re-audited against PRODUCT.md under the completeness rule.
 
-## 11. iOS: ToolKitForiOS and suspension validation
+## 12. iOS: ToolKitForiOS and suspension validation
 
 iOS file-access bodies (security-scoped URLs behind the same `read_file` schema),
 the `ToolKitForiOS` umbrella over the shared domain targets, and validation that
 checkpoints genuinely survive BGTaskScheduler-era suspension — the single most
 differentiated iOS claim. Feeds the iOS reference app (app repo's backlog).
 
-## 12. The studio (candidate, unscheduled)
+## 13. The studio (candidate, unscheduled)
 
 A local-first trace/replay/eval inspection app — LangSmith's job, no cloud —
 generalized from the reference app's trace UI. Scheduled only if PM-grade
-inspection demand shows up in real use; depends on item 6's replay foundations.
+inspection demand shows up in real use; depends on item 8's replay foundations.
 
 ## Parked with reasons
 

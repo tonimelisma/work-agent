@@ -229,3 +229,30 @@ resume. Two catches, verified 2026-07-17:
   model.
 - Tool names as the permission vocabulary (with parameter-level specifiers) is an
   elegant unification we'd otherwise reinvent badly.
+
+---
+
+## Gap analysis: AgentKit's ToolKit vs the work-assistant benchmarks (2026-07-19)
+
+Cross-referencing this doc's Cowork/Claude Code inventory (and the Codex doc)
+against AgentKit's built tools (FR-074–083) and roadmap. The convergent core set
+every benchmark ships — ChatGPT's work surface, OpenAI's hosted tools, Manus
+included — is seven capabilities: files, web, code execution, office documents,
+email/calendar, browser/computer control, plan+ask.
+
+| Capability | Benchmarks | AgentKit status |
+|---|---|---|
+| Files read/write/edit/find/search | All | Built (FR-074–079); docx read is native where Cowork uses code execution |
+| Web fetch + search | All | Built (FR-082/083); Brave path never live-run |
+| Ask user + plan tracking | All | Built (FR-080/081) |
+| Calendar/contacts/reminders | Cowork via OAuth connectors | Roadmap (ToolKitPIM — local EventKit/Contacts, no OAuth: the differentiated angle) |
+| **Email** | Cowork's tier-one connector | **Decided 2026-07-19: "Gmail and Outlook via MCP. No one uses the local mail app. Put them ASAP."** Roadmap item 3 — which pulls the whole MCP foundation up with it. Mail.app-via-Apple-Events rejected |
+| **Document creation** | Cowork's document skills via sandboxed code execution — arguably its core work value | **Decided 2026-07-19: "PDFs too" — PDF creation is roadmap item 4** (PDFKit, native, no sandbox needed). docx/xlsx *creation* remains an open recommendation, not decided |
+| Code/shell execution | Cowork sandboxed bash; Codex's entire thesis | Parked until an isolation design exists — noting honestly that it also underlies the benchmarks' data-analysis and file-conversion patterns; native PDF creation removes one of those pressures |
+| Browser / computer use | Cowork tiers 2–3 | Deliberately absent; the widest capability gap and the most defensible to skip |
+| Subagents, skills, scheduling, artifacts, memory stack | Present in Claude harnesses | Non-goals / app-layer; Apple FM 27's "custom skills" may cover the skills niche natively — watch |
+
+Bottom line at the time of writing: four of the seven core capabilities built,
+calendar planned, email and PDFs now prioritized at roadmap items 3–4. The two
+deliberate absences (code execution, browser/computer control) are the ones where
+skipping is strategy rather than lag.
