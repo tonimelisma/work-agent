@@ -19,7 +19,7 @@ nonisolated enum ChatChunk: Sendable, Equatable {
 }
 
 /// A chat failure, in words a non-developer can act on.
-// REQ: FR-040 — no status codes or protocol vocabulary in these messages.
+// REQ: PRODUCT.md §2 — no status codes or protocol vocabulary in these messages.
 nonisolated enum ChatError: LocalizedError, Equatable {
     case notConfigured
     case rejected

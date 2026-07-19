@@ -98,7 +98,7 @@ struct OpenAICompatibleChatProviderTests {
         #expect(out.reasoning == "thinking…")
     }
 
-    @Test("FR-040: an auth failure throws a jargon-free ChatError")
+    @Test("PRODUCT.md §2: an auth failure throws a jargon-free ChatError")
     func authFailureIsFriendly() async throws {
         let provider = OpenAICompatibleChatProvider(baseURL: base, session: session(status: 401, body: ""))
         let out = await collect(provider.stream(messages: [], model: "m", apiKey: "bad"))

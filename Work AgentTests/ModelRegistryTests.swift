@@ -65,7 +65,7 @@ struct ModelRegistryTests {
         #expect(registry.provider(id: "openai")?.models.count == 1)
     }
 
-    @Test("FR-053: tool-capable models are separable from the rest")
+    @Test("FR-061: tool-capable models are separable from the rest")
     func toolCapableFiltering() throws {
         let registry = try decode("""
         {
@@ -83,7 +83,7 @@ struct ModelRegistryTests {
         #expect(provider.toolCapableModels.map(\.id) == ["agentic"])
     }
 
-    @Test("FR-053: a model omitting tool_call is treated as not tool-capable")
+    @Test("FR-061: a model omitting tool_call is treated as not tool-capable")
     func missingToolCallDefaultsFalse() throws {
         // A false positive strands the user mid-agent-run; a false negative just hides
         // a model. Default to the recoverable failure.
@@ -163,7 +163,8 @@ struct BundledSnapshotTests {
         #expect(registry.providers.count > 100)
         #expect(!registry.usableProviders.isEmpty)
 
-        // FR-002 requires two hosted vendors; these are the two we build against.
+        // anthropic and openai are the two vendors with native adapters (ADR-0007);
+        // every other curated provider routes through the OpenAI-compatible one.
         let anthropic = try #require(registry.provider(id: "anthropic"))
         let openai = try #require(registry.provider(id: "openai"))
         #expect(!anthropic.toolCapableModels.isEmpty)

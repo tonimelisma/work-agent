@@ -8,7 +8,7 @@
 import Foundation
 
 /// Why a credential didn't verify — in words a non-developer can act on.
-// REQ: FR-040 — no status codes, no header names, no provider jargon in these strings.
+// REQ: PRODUCT.md §2 — no status codes, no header names, no provider jargon in these strings.
 nonisolated enum VerificationFailure: LocalizedError, Equatable {
     case rejected
     case forbidden

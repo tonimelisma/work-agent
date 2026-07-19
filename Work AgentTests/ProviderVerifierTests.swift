@@ -119,7 +119,7 @@ struct ProviderVerifierTests {
         #expect(result == .failed(.unsupportedProvider))
     }
 
-    @Test("FR-040: verification failures are explained without jargon")
+    @Test("PRODUCT.md §2: verification failures are explained without jargon")
     func failuresAreHumanReadable() {
         let jargon = ["401", "403", "HTTP", "status", "header", "x-api-key", "Bearer", "nil", "URLError"]
 
