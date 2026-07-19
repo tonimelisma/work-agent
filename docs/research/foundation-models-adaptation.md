@@ -263,7 +263,9 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 
 ```text
 Work Agent app
-  UI / credentials / catalog / app task storage / native tool implementations
+  UI / credentials / catalog / app task storage / tool selection & approval policy
+  (tool implementations moved into the package's ToolKit products, 2026-07-18 —
+  see plans/runtime-api.md §6)
     ↓
 Native Swift agent-runtime SPM package (iOS 27 + macOS 27)
   TaskCoordinator / RunPolicy / checkpoint / interrupt / failover / trace

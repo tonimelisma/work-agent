@@ -69,6 +69,12 @@ Foundation Models:
   `FoundationModels.Tool` gains tracing, budgets, timeouts, and corrective
   error handling by being run through the runtime; effects/idempotency arrive
   as data (annotations), not as a competing protocol.
+- **The ToolKit products — native tool implementations** (Toni, 2026-07-18: "one
+  of the most valuable parts of this SPM," and "absolutely not in the app"):
+  files, web, PIM (Contacts/EventKit/Reminders), and macOS app control, as
+  small platform-conditional products depending only on Apple frameworks and
+  the tool vocabulary — usable with any model package, runtime optional. The
+  structure and DAG: [plans/runtime-api.md](../plans/runtime-api.md) §6.
 - **Provider executors as batteries**: OpenAI-compatible and Anthropic
   executors with full-fidelity provider state (reasoning round-trips, thought
   signatures) — plus acceptance of *any* injected `LanguageModel`, vendor

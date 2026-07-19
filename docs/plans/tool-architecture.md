@@ -70,9 +70,12 @@ per-tool implementation spec in §3. The increment that builds the tool host
 rewrites this section to match.
 
 One host contract, everything runs through it — built-ins and MCP tools alike.
-The runner, effect/resource metadata and Apple bridge live in the native
-Swift runtime SPM package. Product-specific tool implementations and authorization
-policy stay in the Work Agent app and conform through the package's public API.
+The runner, effect/resource metadata and Apple bridge live in the native Swift
+runtime SPM package — and so do the tool *implementations* themselves, as ToolKit
+products (decided 2026-07-18: they are "one of the most valuable parts of this SPM"
+and "absolutely not in the app" — runtime-api.md §6). The per-tool specs in §3 below
+are therefore package specs. The app keeps tool selection, approval policy, and any
+app-specific tools.
 
 ```swift
 /// A capability the agent can invoke. Built-in or remote (MCP) — the loop can't tell.

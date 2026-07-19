@@ -594,8 +594,9 @@ The accepted middle-layer SPM package should aim to:
 - separate canonical local trace storage from optional OpenTelemetry-style export;
 - build on Apple Foundation Models types and session substrate where the conformance
   harness proves them, while keeping the durable runtime independently testable;
-- keep UI, provider catalog curation, credentials, built-in tool policy, and app task
-  storage outside the package;
+- keep UI, provider catalog curation, credentials, tool selection/approval policy,
+  and app task storage outside the package (tool *implementations* are package
+  ToolKit products — decided 2026-07-18, runtime-api.md §6);
 - remain useful without MCP, a cloud account, a deployment server, or a graph DSL; and
 - support iOS 27 and macOS 27 from one UI-independent core and treat cloud versus
   on-device execution as a `LanguageModel` choice rather than a separate runtime.

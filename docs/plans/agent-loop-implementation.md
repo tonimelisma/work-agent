@@ -26,7 +26,8 @@ Work Agent app
   SwiftUI / Observation
   task presentation and app persistence
   curated model catalog, Keychain and credentials
-  built-in Mac tools and product authorization policy
+  tool selection, approval policy and app-specific tools (implementations live in
+  the package's ToolKit products — runtime-api.md §6)
              │ imports and injects dependencies into
              ▼
 Native Swift agent-runtime SPM package (iOS 27 + macOS 27)
@@ -91,7 +92,9 @@ The app owns:
 - Keychain access and provider credentials;
 - the curated provider/model catalog and selection UI;
 - user-facing approvals, explanations and recovery choices;
-- concrete file, web, native-app and connected-service tools; and
+- tool selection and approval policy (the file, web, PIM and native-app tool
+  *implementations* are package ToolKit products per runtime-api.md §6; the app
+  chooses which are active and adds any app-specific tools); and
 - product policy about which capabilities are available in a run.
 
 The package must not import SwiftUI, AppKit, UIKit, the app target, its

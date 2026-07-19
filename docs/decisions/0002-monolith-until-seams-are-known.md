@@ -6,37 +6,34 @@
 
 ## Context
 
-The inherited roadmap draft opened with "Phase 0": create seven Swift packages
-(`WorkAgentContracts`, `Client`, `UI`, `Core`, `Mac`, `Sandbox`, `Connections`), a
-dependency graph, an `AgentClient` protocol, and a mock implementation — before any
-product code ran.
-
-Those boundaries were invented by an agent that had never seen the domain, for a product
-whose requirements didn't exist. They might be right. Nothing about them was derived
-from anything.
-
 Module boundaries are cheap to add and expensive to move. A wrong boundary drawn early
 doesn't announce itself; it gets defended, because by then there's code on both sides of
-it. Every subsequent decision routes around it.
+it. Every subsequent decision routes around it. So boundaries here are derived from
+evidence, not asserted up front.
 
-The codebase began as an Xcode template. The Foundation Models adaptation POC and the
-agent-framework comparison have now established one concrete reusable boundary, and
-Toni confirmed it directly: "the Swift agentic framework ... will be an SPM."
+The Foundation Models adaptation POC and the agent-framework comparison established one
+concrete reusable boundary, and Toni confirmed it directly: "the Swift agentic
+framework ... will be an SPM." On 2026-07-18 Toni also settled what the package
+carries: the native tool implementations are "one of the most valuable parts of this
+SPM" and "absolutely not in the app."
 
 ## Decision
 
-Keep product code in the single app target by default. Introduce one SPM package for the
-native Swift agent runtime described by ADR-0006. Its boundary is now evidenced rather
-than guessed: it has an independent conformance harness, a platform substrate, a clear
-dependency direction, and a reusable developer-facing purpose distinct from the app.
+**One SPM package, many small library products.** Swift's unit of encapsulation is the
+module (target/product); the package is the unit of versioning. Pre-1.0, everything
+co-evolving against a beta OS belongs in one package so releases stay atomic — but no
+module inside it is allowed to sprawl. The product family and its dependency DAG are
+specified in [plans/runtime-api.md](../plans/runtime-api.md) §6: the durable-run core,
+the provider executors, the tool vocabulary and ToolKit tool products, testing
+support, replay/evals, and MCP (isolated because it carries the one external
+dependency).
 
-The resulting dependency direction is Work Agent app → cross-platform Swift
-agent-runtime package → iOS/macOS 27 Foundation Models. App UI, credentials, catalog,
-task storage and product tool policy remain outside the package. No other SPM package
-is created until a specific seam demonstrably hurts through slow builds, a real
-testability problem or actual reuse.
-
-"It hurts" means something happened. Not that it might.
+The dependency direction is Work Agent app → runtime package products → iOS/macOS 27
+Foundation Models. App UI, credentials, catalog, task storage, and tool *selection and
+approval policy* remain in the app; tool *implementations* are package products. A
+second package (or a repo split) is created only when release cadences demonstrably
+diverge or an external consumer needs a piece standalone — a thing that happened, not
+a thing that might.
 
 ## Considered options
 
@@ -45,10 +42,10 @@ boundaries out while enforcing the dependency direction that the POC and product
 now justify. Costs: package/API design overhead arrives in increment 4 rather than after
 the app-local implementation.
 
-**The draft's seven packages up front** — Clean from commit one, enforced dependency
-direction, UI provably can't import tool implementations. Rejected: it commits to a
-domain model we don't have, and the enforcement it buys is enforcement of a guess. Weeks
-before anything runs. This is the specific failure the draft exhibits.
+**Many packages up front** — Clean from commit one, enforced dependency direction.
+Rejected: separate packages version separately, and during OS-27 beta churn every
+Apple ABI change would force coordinated releases across all of them. Small *products*
+inside one package buy the same import hygiene without the release tax.
 
 **Two packages: Core and UI** — A middle path with the one boundary most projects
 eventually want. Genuinely tempting. Rejected because even this is a guess: the real

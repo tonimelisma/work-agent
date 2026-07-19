@@ -24,9 +24,8 @@ demonstrably need — a fundamentally better-informed decision, and cheap, becau
 then we'll know the real cost of each candidate.
 
 The failure mode this carries is real and worth naming: an engine with nothing to be
-right or wrong about grows forever. The previous draft of this project reached ten
-phases and seven Swift packages without one working feature. What keeps us out of that
-hole is that increments 2, 4, 5, and 6 each have a concrete, falsifiable exit — a real model call,
+right or wrong about grows forever. What keeps us out of that hole is that
+increments 2, 4, 5, and 6 each have a concrete, falsifiable exit — a real model call,
 a real tool doing a real thing, a second provider working cold. None of those are
 opinions. Increment 7 is a hard stop where real use starts steering, or we admit the
 engine isn't done.
@@ -130,7 +129,9 @@ actually specifies.
 
 Tools the engine can actually call, exercised individually until we trust them. The
 starter set is decided and specified in
-[docs/plans/tool-architecture.md](../plans/tool-architecture.md) — see below.
+[docs/plans/tool-architecture.md](../plans/tool-architecture.md) — see below. They
+are built as the package's first ToolKit products, not app code
+([runtime-api.md](../plans/runtime-api.md) §6); the app selects and exercises them.
 
 Approvals deliberately do *not* land here: "specific tool approvals will come later,"
 reaffirmed on the tool plan's open questions — "We don't have folders. Permissions

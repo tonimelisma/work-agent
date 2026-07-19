@@ -133,3 +133,65 @@ Accepted by Toni ("sounds good") on 2026-07-18:
   API syntax — the frameworks that won in Python/TS won partly by teaching.
 - **Never**: a second transcript type, a wrapper around `Generable`, a "simple
   mode" that is a different engine, or a required cloud account.
+
+## 6. Package structure: one package, small products, this DAG
+
+Decided 2026-07-18. Swift's unit of encapsulation is the **module** (target/
+product); the **package** is the unit of versioning. One package pre-1.0 — beta-OS
+churn makes atomic releases essential — but modules stay single-purpose, and this
+DAG is the contract; a module that grows a second job is a bug:
+
+```text
+                     FoundationModels (Apple, OS 27)
+              ▲              ▲               ▲            ▲
+              │              │               │            │
+        Executors      RuntimeCore    ToolVocabulary   RuntimeTesting
+     OpenAI-compat ×9,  journal,      ToolAnnotations,  scripted models,
+     Anthropic; pure    checkpoints,  budgets, effect   virtual clocks,
+     FM conformances,   interrupts,   taxonomy — small  fixture recorders;
+     no runtime dep     RunPolicy,    value types only  no runtime dep
+              │         coordinator,        ▲                  ▲
+              │         tool host    ┌──────┼────────┬─────┐   │
+              │              ▲       │      │        │     │   │
+              │              │  ToolKitFiles ToolKitWeb ToolKitPIM ToolKitMac
+              │              │  (Foundation) (URLSession) (Contacts, (AppleEvents/
+              │              │                            EventKit,  ScriptingBridge,
+              │              │                            Reminders) macOS-only)
+              │              │
+              │        Replay / Evals ──▶ RuntimeTesting
+              │              ▲
+              └── (nothing) MCP ──▶ modelcontextprotocol/swift-sdk
+                                    (the only external dependency anywhere;
+                                     behind a package trait or its own package)
+```
+
+Rules the DAG encodes:
+
+- **`ToolKit*` products are a headline deliverable of the SPM** (Toni, 2026-07-18:
+  the tool implementations are "one of the most valuable parts of this SPM" and
+  "absolutely not in the app"). They depend only on Foundation Models, platform
+  frameworks, and `ToolVocabulary` — never on `RuntimeCore` — so a developer can
+  use `ToolKitPIM` with a vendor model package and no durable runs at all.
+- **Executors import nothing of ours.** They are peers of vendor provider
+  packages; standalone extraction is trivial if an external consumer wants one.
+- **`ToolVocabulary` is the only shared tool language** — a handful of value
+  types (`ToolAnnotations`, budgets, effects). It exists so ToolKit and
+  RuntimeCore can agree without ToolKit importing the runtime.
+- **`RuntimeTesting` is a separate product** so test doubles never link into
+  shipping binaries. **MCP** is isolated because it carries the sole external
+  dependency; every other product's dependency footprint is Apple-only.
+- **TCC travels with ToolKit as documentation contract**: a Contacts/Calendar
+  tool cannot grant itself access — the host app must carry the usage-description
+  Info.plist keys and field App Review. Each ToolKit tool documents its required
+  keys and entitlements; that per-tool obligation is why ToolKit products may
+  graduate to their own release cadence (and package) after 1.0.
+- **Platform divergence lives in implementations, not interfaces**: `read_file`
+  is one spec with a macOS body (plain paths) and an iOS body (security-scoped
+  URLs); ToolKitMac is the only platform-exclusive product.
+- Tool *specs* (what each tool does, its schema, its budgets) are researched and
+  written per tool before it's built — the file/web specs in
+  [tool-architecture.md](tool-architecture.md) §3 are the template; PIM and Mac
+  tool specs don't exist yet and get written when scheduled.
+
+The app's remaining tool role: selection (which ToolKit products are active),
+approval policy when permissions land, credentials, and any app-specific tools.

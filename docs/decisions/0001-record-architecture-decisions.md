@@ -12,10 +12,9 @@ reasoned or accidental. The reliable symptom is an agent "fixing" a deliberate d
 because the reasoning wasn't written down, or relitigating a settled question because
 the alternatives weren't recorded.
 
-The previous roadmap draft demonstrated the failure precisely: it asserted a custom
-Swift agent loop, seven packages, and XPC as though they were facts rather than choices,
-with no alternatives and no reasoning. Unreviewable, because there was nothing to
-disagree with.
+The previous roadmap draft demonstrated the failure precisely: it asserted
+architecture as though it were fact rather than choice, with no alternatives and no
+reasoning. Unreviewable, because there was nothing to disagree with.
 
 We also need a home for decisions that is *not* the engineering doc. They answer
 different questions: ENGINEERING.md says what is true now, an ADR says why we chose
