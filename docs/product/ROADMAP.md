@@ -183,7 +183,8 @@ and the dependency arrows are the only ordering claimed:
 | **Permissions and approvals** | Real use showing what needs gating (increment 7) | The deferred approval model, designed against observed friction rather than imagined risk |
 | **MCP** | Tool host proven (increment 5) | MCP client + the schema degradation ladder (runtime-api.md §4) |
 | **Runtime API hardening** | Increments 4–6 stable | Public-API review against runtime-api.md, DocC, `Examples/`, conformance suite made public |
-| **Extraction and publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §7) | Package restructure-or-split, the name decision (license is decided: MIT), the publication README per [plans/package-readme.md](../plans/package-readme.md), first public tag |
+| **App moves to its own repo** | Toni's call — "soon" (2026-07-19) | This repo becomes the SPM; the macOS app references it as a dependency from its own repo |
+| **Publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §7) | Package.swift at repo root, the name decision (license is decided: MIT; the README already follows [plans/package-readme.md](../plans/package-readme.md)), first public tag |
 | **iOS tool modules + iOS reference app** | Runtime published or near it; macOS app proving it | The sibling product: scoped-access tools, suspension-safe durable runs (see deferred table) |
 | **The studio** | Unscheduled candidate (RUNTIME.md §6) | Local-first trace/replay/eval app, generalized from Work Agent's trace UI |
 

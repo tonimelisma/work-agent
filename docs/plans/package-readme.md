@@ -6,9 +6,13 @@ in the 2026-07-18 discussion: **pyramid principle — the whole menu before any
 depth**; no pain-points section ("too sales-y for devs — we just explain the
 capabilities in an understated, matter-of-fact way that hits home hard because
 it's so factual"); code after breadth, not before ("maybe someone wants it just
-for the tools. maybe someone just wants the testability"). The repo-root
-README.md meanwhile serves as the documentation index and is replaced by this at
-publication.
+for the tools. maybe someone just wants the testability"). **Implemented
+2026-07-19**: the repo-root README.md now follows this structure, written
+entirely from the SPM's perspective (Toni: "write it completely from the
+perspective of the SPM… you can mention that the macOS and iOS apps use this
+SPM but that's it"), with the doc index and pre-release status folded into its
+tail sections. This plan remains the reference for the structure's rationale;
+divergences from it in the live README are bugs.
 
 Craft rules: every H2 answers the question a reader actually has at that scroll
 depth; one sentence per idea above the per-product sections; facts without

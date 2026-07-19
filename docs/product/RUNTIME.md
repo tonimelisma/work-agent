@@ -109,12 +109,13 @@ implementation. Pleasant, high quality apps on their own, but also the reference
 implementation that shows how to use the SDK, utilizes all the latest
 capabilities… and we would have tools for iOS too"):
 
-- **Same repo, one Xcode workspace.** The runtime is a local SPM package; the
-  macOS app (and later the iOS app) are workspace targets referencing it by
-  path. Publication structure — restructure with the package at the repo root
-  and apps in subfolders, or split the package's repo — is deferred to the
-  release gate below, since SwiftPM only demands a root manifest for *remote*
-  consumption.
+- **This repo is the package's; the apps get their own.** Revised 2026-07-19
+  (Toni: "let's keep this repo as focused on the SPM and forget the app… I'll
+  move the macOS app out of the repo soon"). This repo becomes the SPM — root
+  README written from the package's perspective, apps mentioned only as its
+  reference implementations. The apps reference the package as an SPM
+  dependency from their own repos once moved; until the move happens, the app
+  code still sits here but is no longer this repo's subject.
 - **Two apps, both real products and both canonical references.** Work Agent
   macOS (PRODUCT.md) and a future iOS sibling. The iOS app is not a port or a
   companion: iOS's mandatory sandbox means its tool set is scoped-file access,
