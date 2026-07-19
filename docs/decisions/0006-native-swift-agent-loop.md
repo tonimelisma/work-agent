@@ -118,8 +118,10 @@ tool output.
 
 ## Validation
 
-The decision is backed by the reproducible package in
-[`Experiments/FoundationModelsPOC/`](../../Experiments/FoundationModelsPOC/):
+The decision was backed by a reproducible POC package
+(`Experiments/FoundationModelsPOC/`, deleted 2026-07-19 once increment 4 migrated its
+proven pieces into the production **AgentKit** package — see
+[ENGINEERING.md](../engineering/ENGINEERING.md)):
 
 - 20 deterministic tests after the PR-review error-event regression;
 - strict schema conversion and transcript archival/provider-state filtering;
@@ -127,8 +129,8 @@ The decision is backed by the reproducible package in
 - three live provider/session tool cycles across both wire formats; and
 - one live cross-provider reconstructed-session switch.
 
-The POC remains a conformance harness until increment 4 migrates its proven pieces into
-the production SPM package. Exact evidence and remaining non-blocking API coverage are
-in [foundation-models-adaptation.md](../research/foundation-models-adaptation.md). The
-POC has executed on macOS; iOS compilation and eligible-device on-device execution are
-increment-4 gates, not results claimed by the current experiment.
+Exact evidence and remaining non-blocking API coverage are in
+[foundation-models-adaptation.md](../research/foundation-models-adaptation.md). Increment
+4 additionally confirmed the package **builds and tests green on iOS 27**, not just
+macOS; a gated eligible-device on-device `SystemLanguageModel` execution is still
+outstanding (named in ENGINEERING.md, not claimed here).

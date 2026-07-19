@@ -2,7 +2,8 @@
 //  Conversation.swift
 //  Work Agent
 //
-//  The chat data model. One conversation, persisted in full.
+//  A chat message and its role. Persistence is ConversationRecord's job
+//  (SwiftData, ADR-0008); this is just the wire/display shape (FR-063).
 //
 
 import Foundation
@@ -35,16 +36,4 @@ nonisolated struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
     }
 
     var hasReasoning: Bool { !reasoning.isEmpty }
-}
-
-/// The full conversation. One per app, for now (multiple conversations are deferred).
-nonisolated struct Conversation: Codable, Sendable {
-    var messages: [ChatMessage] = []
-
-    /// Messages to send to the model: only role + text, reasoning stripped.
-    var wireMessages: [ChatMessage] {
-        messages
-            .filter { !$0.text.isEmpty && $0.failure == nil }
-            .map { ChatMessage(role: $0.role, text: $0.text) }
-    }
 }

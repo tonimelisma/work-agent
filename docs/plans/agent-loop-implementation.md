@@ -1,9 +1,11 @@
 # Plan: the three-layer agent runtime
 
-**Status: proposal, revised 2026-07-18.** This is the build plan for ROADMAP increment
-4 and the runtime half of increment 5. It implements the accepted three-layer decision
-in [ADR-0006](../decisions/0006-native-swift-agent-loop.md) and the single justified
+**Status: increment 4 built 2026-07-19** (the runtime half of increment 5 — ToolKit
+products — remains a proposal). This was the build plan for ROADMAP increment 4. It
+implements the accepted three-layer decision in
+[ADR-0006](../decisions/0006-native-swift-agent-loop.md) and the single justified
 package boundary in [ADR-0002](../decisions/0002-monolith-until-seams-are-known.md).
+§10's open questions are answered below; ENGINEERING.md describes the resulting code.
 
 The older untracked draft proposed a custom `AgentMessage`, provider extras bag,
 `ToolCapableProvider` and basic turn loop. The macOS 27 POC proved that Apple now owns
@@ -288,19 +290,23 @@ The POC package is then either deleted after its fixtures/tests migrate or retai
 as a clearly named compatibility lab with no duplicate production implementation. The
 increment DOR must choose one; two drifting implementations are not acceptable.
 
-## 10. Open questions for increment 4
+## 10. Open questions for increment 4 — answered 2026-07-19
 
-1. **Public package/module name.** `AgentKit` is only a working label.
+1. ~~**Public package/module name.**~~ Stays the working label `AgentKit` for this
+   increment; the *final* public name is deferred to the Publication horizon
+   (ROADMAP.md), well past increment 7 — not blocking. Module names inside are settled
+   (README.md's DAG): `RuntimeCore`, `Executors`, `ToolVocabulary`, `RuntimeTesting`.
 2. ~~What is a task in the UI?~~ **Answered 2026-07-18** (Toni: "the user chats" —
-   like Claude Cowork). The conversation is the unit of work; the agent loop lands in
-   the existing chat window, and durable runs belong to conversations. No separate
-   task surface, ever. The concrete residue for the DOR: does v1 support **multiple
-   concurrent conversations** (Cowork-style sidebar) or one, and what happens to an
-   in-flight run on quit — pause-and-offer-resume or auto-resume at relaunch (the
-   window-closure half stays with PRODUCT.md's background-execution question).
-3. **Concrete app persistence.** SwiftData, Codable files, or SQLite/GRDB. The package
-   exposes protocols and does not decide this app choice.
-4. **Failover v1.** Manual user-selected resume or automatic designated fallback.
-5. **Background execution.** Whether v1 work survives window closure remains the
-   separate product question in PRODUCT.md.
-6. **POC disposition.** Delete after migration or retain as a compatibility lab.
+   like Claude Cowork). The conversation is the unit of work. The concrete residue,
+   **answered 2026-07-19**: v1 supports **multiple concurrent conversations**
+   (Cowork-style sidebar, FR-071); an in-flight run on quit **pauses and offers an
+   explicit resume** (FR-072), never auto-resumes (the window-closure half stays with
+   PRODUCT.md's separate background-execution question).
+3. ~~**Concrete app persistence.**~~ **SwiftData** (ADR-0008) — the app's call, as
+   this section always said.
+4. ~~**Failover v1.**~~ **Automatic**, to a designated fallback (FR-006 updated).
+5. **Background execution** remains open — PRODUCT.md's separate question, untouched
+   by this increment.
+6. ~~**POC disposition.**~~ **Deleted 2026-07-19** after its fixtures and tests
+   migrated into AgentKit (`TranscriptArchive`, `SchemaBridge`, the stream parsers, and
+   the session-semantics suite, now built on the reusable `ScriptedLanguageModel`).

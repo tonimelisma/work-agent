@@ -1,8 +1,18 @@
 # ADR-0007 — Provider chat abstraction: two native adapters
 
-- **Status:** Accepted
+- **Status:** Accepted; realization moved to AgentKit in increment 4 (2026-07-19)
 - **Date:** 2026-07-17
 - **Deciders:** Toni
+
+**Increment-4 update.** The reasoning below is unchanged and still governs — two
+adapters, not a proxy, not eleven bespoke clients. What moved: the app's
+`ChatProvider`/`OpenAICompatibleChatProvider`/`AnthropicChatProvider` (increment 2) are
+deleted; the same two adapters now live as AgentKit's `Executors` module
+(`OpenAICompatibleExecutor`, `AnthropicExecutor`), conforming to Apple's
+`LanguageModelExecutor` instead of the app-local `ChatProvider` protocol, per
+[agent-loop-implementation.md](../plans/agent-loop-implementation.md) §4. The routing
+rule, the base-URL overrides, and the "own the wire, accept the drift" tradeoff below
+are exactly as accepted — read `Executors`/`ChatProvider` interchangeably below.
 
 ## Context
 
