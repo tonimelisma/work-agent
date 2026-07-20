@@ -24,7 +24,7 @@ adjectives — the reader who has hit these problems doesn't need them.
 
 1. **Title + one-liner naming the whole, not the favorite.** "Swift libraries
    for building language-model apps on Apple's Foundation Models framework:
-   cloud provider executors, native tools, durable agent runs, and
+   cloud provider executors, native tools, total recall for agent runs, and
    deterministic testing — independently importable from one package." Badges:
    Swift 6, macOS 27 / iOS 27, SPM, license, CI.
 2. **First paragraph — the governing thought, three factual sentences.** What FM
@@ -32,7 +32,7 @@ adjectives — the reader who has hit these problems doesn't need them.
    stands alone with Apple-only dependencies.
 3. **The menu — a complete product table, before anything else.** One row per
    product, one factual line, import name, dependency column. Order = adoption
-   story (model access → capabilities → durability → verification):
+   story (model access → capabilities → recall → verification):
    - **Executors** — ten cloud providers as `LanguageModel`s; provider wire
      quirks handled **and provider capabilities beyond the FM API exposed**:
      typed options for provider-native features (cache control, server-side
@@ -41,31 +41,30 @@ adjectives — the reader who has hit these problems doesn't need them.
    - **ToolKit** (Files / Web / PIM / Mac) — ready-made native tools; each
      documents its host-app Info.plist keys. *FoundationModels + platform
      framework.*
-   - **RuntimeCore** — runs that survive crash, relaunch, and suspension:
-     journal, checkpoints, resumable interrupts, composable limits, retry,
-     cross-provider failover. *FoundationModels.*
-   - **RuntimeTesting** — scripted models, virtual clocks, fixture recorders;
-     never links into shipping binaries. *FoundationModels.*
-   - **Replay / Evals** — recorded runs replayed against new models, prompts,
-     providers. *RuntimeCore + RuntimeTesting.*
-   - **MCP** — MCP servers as tools with explicit schema conversion. *The one
-     external dependency, opt-in.*
+   - **Recorder** — attach one line: timestamps, usage, cost, full untruncated
+     tool output; budgets + the `read_tool_output` history tool; recordings
+     replay as offline regression suites. *FoundationModels.*
+   - **Testing** — scripted models, virtual clocks, fixture recorders; never
+     links into shipping binaries. *FoundationModels.*
+   - **MCP** — MCP servers as plain FM tools for any session, nothing else of
+     ours required. *The one external dependency, opt-in.*
 4. **One short section per product, menu order.** Three to five understated
    sentences plus a small code fragment each. Flat facts carry the weight ("a
    thrown tool error returns to the model as corrective output instead of
    terminating the response"; "DeepSeek requires reasoning content echoed on
    the following request; the executor does this"). Pick-and-choose made
    concrete: ToolKit shown with a vendor model package and no runtime;
-   RuntimeTesting shown testing non-runtime agent code. RuntimeCore naturally
-   runs longest and carries the resume-after-force-quit fragment.
+   RuntimeTesting shown testing non-runtime agent code. the Recorder naturally
+   runs longest and carries the history-tool and replay fragments.
 5. **Compatibility.** Xcode 27, macOS 27 / iOS 27, Swift 6, beta-tracking
    notice with pin-your-versions instruction. Works with any `LanguageModel` —
    Apple on-device, PCC, Claude and Gemini packages, our executors — plus the
    provider conformance matrix (provider × verified behavior × date), which is
    the certification hook stated as a table rather than a pitch.
 6. **Relationship to Foundation Models** — short, flat: no parallel types;
-   `Transcript`/`Tool`/`@Generable` stay Apple's; `respond()` untouched;
-   the runtime adds an entry point for durable work, not a second session.
+   `Transcript`/`Tool`/`@Generable` stay Apple's; `respond()` the only front
+   door — the package adds no entry point at all (the 2026-07-19 attachment
+   pivot), not a second session.
 7. **The apps** — two sentences and screenshots: Work Agent for macOS and iOS
    are built entirely on these libraries and exercise every product above.
    Evidence, zero adjectives.

@@ -101,24 +101,28 @@ Still `Specified`, unbuilt: FR-005, FR-060 (surface), FR-064, FR-067, NFR-003
 
 ## App backlog (future, in priority order)
 
-1. **Wire the built-but-unsurfaced tools**: `ask_user` needs a question card,
+1. **Own the conductor** — the 2026-07-19 attachment pivot demotes
+   `TaskCoordinator`/`RunPolicy` from package public API to reference-app code:
+   this app absorbs and owns its run-conductor logic (send → record → save →
+   fail over → pause on quit) as the Recorder lands in the package.
+2. **Wire the built-but-unsurfaced tools**: `ask_user` needs a question card,
    `update_plan` a plan display; wrap app tool calls in `InstrumentedTool` once the
    run id is available at integration; supply a Brave key to verify `web_search`
    live.
 2. **Real use starts steering** — Toni works through the app; observed gaps pick
    what's next ("real tasks as in evals… no, we don't need that").
-3. **Permissions and approvals** — deferred wholesale ("We don't have folders.
+4. **Permissions and approvals** — deferred wholesale ("We don't have folders.
    Permissions come later"); designed against observed friction.
-4. **FR-005 / FR-067** — BYO credentials generally; OpenAI subscription sign-in
+5. **FR-005 / FR-067** — BYO credentials generally; OpenAI subscription sign-in
    specifically. Standing caveat: OpenAI documents sign-in for its own clients
    only; the claim that third-party subscription OAuth is permitted is unsourced
    (OpenClaw's docs, citing nothing); Anthropic and Google both closed this path
    in 2026 with enforcement. Toni's call to accept the risk before building.
    Related open product problem: how a non-technical user gets an API key at all.
-5. **FR-060 surface** — expose provider-exclusive capabilities in the app as
+6. **FR-060 surface** — expose provider-exclusive capabilities in the app as
    AgentKit's fidelity tiers land.
-6. **Connections** (Gmail/Drive/M365), **native app control**, **background
+7. **Connections** (Gmail/Drive/M365), **native app control**, **background
    execution** (LaunchAgent/XPC), **automations** — each waits for a real task to
    demand it.
-7. **iOS sibling app** — the runtime's second reference implementation; scoped
+8. **iOS sibling app** — the runtime's second reference implementation; scoped
    file access and consent arrive by OS force.

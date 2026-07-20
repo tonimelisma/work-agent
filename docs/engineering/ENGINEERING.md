@@ -238,6 +238,21 @@ against FR-080/081/083, not silently deferred.
 The rationale record (absorbed from the former ADRs; app-side rationale — Developer
 ID distribution, models.dev registry, SwiftData — moved to docs/app/APP.md).
 
+### Attachments, not an engine (the 2026-07-19 pivot — supersedes the framing below)
+
+The public-API direction changed after Toni's challenge: FM's own transcript
+already carries tool calls/outputs for UI rendering, its hooks fire live, and
+transcript persistence is a ten-line `Codable` round-trip — so a session-owning
+`runtime.run()` entry point trades Apple's documented API for conveniences a
+developer can write in an afternoon ("no developer will see the value").
+The package therefore attaches to Apple's three sockets (model, tools, profile)
+and never wraps the session: Executors, ToolKit, a passive **Recorder** (traces
+with timestamps and raw output, budgets+spill, the `read_tool_output` history
+tool, replay/evals, the journal-before-execute guard), standalone MCP, Testing,
+and small transcript utilities (save/load + the provider-state strip).
+`TaskCoordinator`/`RunPolicy` remain in the tree serving the app and are slated
+to become app-side code as the Recorder lands. Design: plans/runtime-api.md.
+
 ### Three layers: Foundation Models under a durable runtime under the host
 
 Apple's OS 27 `LanguageModel`/`LanguageModelExecutor`/`LanguageModelSession`/

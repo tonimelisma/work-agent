@@ -55,7 +55,18 @@ ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
   "we're not trying to neuter them" (FR-060's principle; full fidelity work
   continues on the roadmap).
 
-## Durable runs
+## Run mechanics (durable runs — repositioned 2026-07-19)
+
+**The attachment pivot, recorded:** after pressure-testing durability's value
+("can you really explain the value of durability here?… It's more your hobby
+horse than mine"; "bypassing the core FM API… is horrible"), the public-API
+direction changed — see plans/runtime-api.md. What's below remains a true record
+of what is *built and working in the app today*; its future is redirection, not
+deletion: the journal/checkpoint/archive internals migrate inside the Recorder
+(where their daily value is traces, not crash insurance), `TaskCoordinator` and
+`RunPolicy` leave the public API and become reference-app code, and the
+provider-state strip becomes a small utility. FR-006/072/073 stay true as *app*
+features delivered by this code.
 
 - **FR-006 — Implemented.** A run whose provider fails mid-flight preserves its
   state and **automatically** resumes on a designated fallback, the switch recorded

@@ -25,10 +25,10 @@ serialization belongs in `LanguageModelExecutor` conformances. See ADR-0006 and
 Grounding: [agent-harness-builtin-tools.md](../research/agent-harness-builtin-tools.md)
 (Claude Code/Cowork, the ~40-tool typed style) and
 [codex-harness-tools.md](../research/codex-harness-tools.md) (Codex, the
-shell-plus-patch style). The codebase today is an unmodified SwiftUI template
-(ENGINEERING.md), so this plan builds on the specs, not on existing code — it slots
-into ROADMAP increments 4–6 and depends on ADR-0006 (the agent loop) for its wire-level
-half.
+shell-plus-patch style). The file/web/interaction tools this plan
+specified are built (ENGINEERING.md describes the code); its live content is the
+per-tool specs and the MCP/office/approval proposals, now scheduled as ROADMAP
+items 4–5.
 
 ---
 
@@ -57,6 +57,12 @@ truncation**, **per-turn dynamic tool assembly**, and the **sandbox-vs-approval
 axes as separate concepts** for when shell/exec eventually lands.
 
 ## 2. The core abstraction
+
+**Pivot note, 2026-07-19:** the runner/budget/spill design below now lives in the
+**Recorder** (plans/runtime-api.md §3) as a passive tool wrapper — there is no
+session-owning runtime, no `ToolRunner` as public API, and the `.spill` recovery
+path is the Recorder's `read_tool_output` history tool. Per-tool specs in §3 and
+the MCP/office/approval proposals remain this doc's live content.
 
 **Superseded in part, 2026-07-18:** the separate host tool protocol sketched below
 is replaced by the north-star tool design in [runtime-api.md](runtime-api.md) §3 —

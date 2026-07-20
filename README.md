@@ -3,14 +3,15 @@
 ![Swift 6](https://img.shields.io/badge/Swift-6-orange) ![Platforms](https://img.shields.io/badge/platforms-macOS%2027%20%7C%20iOS%2027-blue) ![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen) ![License](https://img.shields.io/badge/license-MIT-lightgrey) ![Status](https://img.shields.io/badge/status-pre--release-yellow)
 
 Swift libraries for building language-model apps on Apple's Foundation Models
-framework: cloud provider executors, native tools, durable agent runs, and
-deterministic testing — independently importable from one package.
+framework: cloud provider executors, native tools, total recall for agent runs,
+and deterministic testing — independently importable from one package.
 
 Foundation Models gives every Swift app a session API over any conforming
-language model. This package supplies the layers Apple doesn't: getting cloud
-providers into that API at full fidelity, giving models native capabilities on
-macOS and iOS, making long-running work survive, and making all of it testable.
-Each library stands alone, and every dependency is an Apple framework.
+language model, with three sockets: the model slot, the tools array, and the
+session profile. Each of these libraries plugs into a socket — **nothing wraps
+or replaces Apple's API**; `session.respond()` stays your only front door, and
+code from any Foundation Models tutorial works here unchanged. Each library
+stands alone, and every dependency is an Apple framework.
 
 ## The libraries
 
@@ -18,13 +19,13 @@ Each library stands alone, and every dependency is an Apple framework.
 |---|---|---|
 | **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — GPT, DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus Anthropic native. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
 | **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders, document creation (PDF, docx, xlsx, pptx). Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
-| **RuntimeCore** | Agent runs that survive crash, relaunch, and suspension: append-only journal, checkpoints, resumable interrupts, composable run limits, retry, and cross-provider failover mid-run | FoundationModels |
-| **RuntimeTesting** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
-| **Traces / Replay / Evals** | Every run is a complete typed trace — each attempt, tool call, result, token, and cost — stored locally, renderable in your UI, replayable against new models or prompts | RuntimeCore + RuntimeTesting |
-| **MCP** | Model Context Protocol servers as tools, with explicit schema conversion | The one external dependency, opt-in |
+| **Recorder** | Attach one line and every run is remembered: timestamps, usage, cost, and the *full untruncated* tool output the transcript never keeps. Oversized results reach the model budgeted, with a history tool to page back into the rest. Recordings replay as offline regression suites | FoundationModels |
+| **Testing** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
+| **MCP** | Model Context Protocol servers as plain FM tools for any session — no other library of ours required. Explicit schema conversion, never silent flattening | The one external dependency, opt-in |
 
-Take one library or all of them. ToolKit works with a vendor's model package and
-no runtime; RuntimeTesting tests agent code that never imports RuntimeCore.
+Take one library or all of them — none requires another. ToolKit works with a
+vendor's model package; the Recorder attaches to any session; Testing tests
+agent code that imports nothing else of ours.
 
 ## Executors
 
@@ -81,54 +82,57 @@ let session = LanguageModelSession(model: claude,
 // No runtime required — ToolKit works with any Foundation Models provider.
 ```
 
-## RuntimeCore
+## Recorder
 
-`LanguageModelSession` is an in-process conversation; when the process dies,
-so does the work. RuntimeCore makes the run — not the process — the unit of
-work. Every attempt, tool invocation, and checkpoint is journaled before it
-matters. A run resumed after a force-quit continues from its last checkpoint.
-A question to the user is a serializable interrupt, so an approval can be
-answered after a relaunch. A thrown tool error returns to the model as
-corrective output instead of terminating the response. Limits compose: turns,
-tokens, cost, wall-clock, tool calls. A run can switch providers mid-flight;
-provider-owned state is stripped, the conversation continues.
+A passive recorder you attach in one line — by wrapping your tools and
+installing a session profile. It never touches the session's control flow.
 
-Tools need no changes to benefit. Any `FoundationModels.Tool` run through the
-runtime gains tracing, timeouts, and output budgets — an oversized result
-reaches the model as a first page or a summary plus instructions for getting
-the rest, while the full output lands in the trace. Effects and idempotency
-are declared as data (`WriteReport().annotations(.writesFiles)`), never as a
-protocol to adopt; MCP tools carry their own hints. Consequential tools are
-journaled before they execute, so a crash between a side effect and its record
-is detected on resume instead of silently repeated, and two tool calls against
-the same resource never race. Compaction ships as policy with batteries: old tool
-results cleared past a threshold, conversations summarized and folded, or the
-provider's own compaction where one exists (OpenAI's `/responses/compact` and
-server-side threshold, Anthropic's context editing) — selectable per run,
-custom strategies injectable. Whatever the strategy, only the model-facing
-projection shrinks; the journal keeps the uncompacted truth, so traces and
-replay are unaffected.
+Foundation Models already shows you what happened: the transcript carries every
+tool call and tool output, and profile hooks fire live. What it doesn't keep:
+anything past the session's lifetime, timestamps, the raw untruncated tool
+output (the transcript holds only what the model saw), retries, or tool
+failures (a thrown tool error terminates the response and lands nowhere). The
+Recorder keeps all of it, locally.
+
+Oversized tool output reaches the model as a first page or summary plus an
+instruction for getting more, while the full result lands in the store — and
+`recorder.historyTool` lets the model page back into anything it was shown a
+summary of (`read_tool_output(invocationID, offset)`). That pairing makes
+aggressive context compaction safe: old tool results can be cleared from the
+model's window because nothing is ever truly gone. Consequential tools get a
+journal-before-execute guard in the same wrapper, so a call that may or may not
+have completed before a crash is asked about, never silently repeated. A
+recoverable tool error can return to the model as corrective output instead of
+killing the response.
 
 ```swift
-let run = try await runtime.run(
-    Agent(model: deepseek, instructions: "Prepare the weekly report.",
-          tools: [ReadFile(), WriteReport()]),
-    policy: .default.maxTurns(30).budget(tokens: 200_000))
+let recorder = Recorder(store: .default)
 
-for try await event in run.events { render(event) }
+let session = LanguageModelSession(
+    model: OpenAICompatibleModel(.deepSeek, apiKey: key),
+    tools: recorder.instrument([ReadFile(), FetchURL(), CreatePDF(),
+                                recorder.historyTool]),
+    profile: recorder.profile)
 
-// After a crash, a force-quit, or an iOS suspension:
-let resumed = try await runtime.resume(run.id)
+try await session.respond(to: prompt)   // Apple's API. Untouched.
 ```
 
-For a quick one-shot answer, `session.respond(to:)` remains exactly what you'd
-write without this package. The runtime is the entry point for work that must
-survive; it never wraps or replaces Apple's types.
+A recording is also a regression suite: replay it against a different model,
+provider, or prompt and diff the trajectories, offline, in CI. Timestamps and
+costs feed your dashboards and your debugging — which tool call is slow, what
+did this run cost — never the model.
 
-## RuntimeTesting
+Small utilities ride along, deliberately small: `TranscriptArchive.save/load`
+(the transcript is `Codable`; this is the ten-line round-trip, packaged) and
+`replay(to:)`, which strips one provider's private conversation state so a
+conversation started on DeepSeek can continue on Claude — providers hard-fail
+or lose their reasoning thread without this. Retry is a documentation snippet,
+not a policy engine.
+
+## Testing
 
 Agent code is ordinarily untestable: the model is remote, nondeterministic, and
-billed. RuntimeTesting makes it a value you script. Assert that your agent
+billed. Testing makes it a value you script. Assert that your agent
 called the right tool with the right arguments, handled a malformed reply,
 respected its budget, resumed correctly — in milliseconds, offline, in CI.
 
@@ -137,36 +141,24 @@ let model = ScriptedModel {
     ToolCallTurn("read_file", ["path": "/tmp/notes.txt"])
     TextTurn("The file says the deadline is Friday.")
 }
-let run = try await runtime.run(Agent(model: model, tools: [ReadFile.fixture]),
-                                clock: VirtualClock())
-#expect(run.trajectory.toolCalls.map(\.name) == ["read_file"])
+let session = LanguageModelSession(model: model,
+                                   tools: recorder.instrument([ReadFile.fixture]))
+try await session.respond(to: "what does the file say?")
+#expect(recorder.latest.toolCalls.map(\.name) == ["read_file"])
 ```
 
 The same scripted-model suite doubles as a conformance kit: any
 `LanguageModel` package can be certified against the runtime's semantics —
 cancellation, retry atomicity, tool-error behavior, state round-trips.
 
-## Traces, replay, and evals
-
-Every run produces a complete typed trace: run → turn → model attempt → tool
-invocation → result, with usage, timing, cost, and full tool output before any
-truncation. Foundation Models exposes live hooks but keeps no history — and
-its response snapshots coalesce streaming events, so this trace is captured at
-the executor channel, losslessly. It's a local structure your app can render
-("show me exactly what the agent did"), not a telemetry feed; nothing leaves
-the machine.
-
-A trace is also a recording. Replay one against a different model, provider,
-or prompt and diff the trajectories; keep a directory of recorded cases as a
-regression suite that runs offline in CI.
-
 ## MCP
 
-MCP servers mount as tools. Foundation Models' `GenerationSchema` accepts a
+MCP servers mount as plain `FoundationModels.Tool`s that work with any session —
+MCP depends on nothing else in this package. `GenerationSchema` accepts a
 strict subset of JSON Schema, so conversion is explicit: supported schemas
 convert exactly, unsupported keywords are reported with their path and a
-documented fallback — never silently flattened. MCP is the only library with a
-dependency outside Apple's frameworks, and it's opt-in.
+documented fallback — never silently flattened. The one external dependency
+anywhere, and it's opt-in.
 
 ## Requirements
 
@@ -185,8 +177,9 @@ provider-state replay and a live mid-run provider switch (2026-07-18).
 
 No parallel types. `Transcript`, `Tool`, `@Generable`, and `GenerationSchema`
 remain Apple's; code from any Foundation Models tutorial works here unchanged.
-The package adds an entry point for durable work and the pieces around it — it
-is not a second session API, and it never shadows an Apple noun.
+The package adds no entry point at all — models, tools, and a recorder plug
+into the session Apple gave you. It is not a second session API, and it never
+shadows an Apple noun.
 
 ## What this package does not do
 
