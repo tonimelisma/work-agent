@@ -184,8 +184,16 @@ existence:
 DX principles worth being opinionated about: progressive disclosure with *one*
 runtime underneath (no simple-mode/advanced-mode fork); test doubles as
 first-class API, not an afterthought (scripted `LanguageModel`s, deterministic
-clocks, fixture recorders — this is what makes agent apps *testable*, and no
-framework in any language does it well); macros only where they delete real
+clocks, fixture recorders — this is what makes agent apps *testable*.
+**Correction 2026-07-19:** the original claim here — "no framework in any
+language does it well" — was too strong: Pydantic AI's `TestModel`/
+`FunctionModel` with its `ALLOW_MODEL_REQUESTS` guard is a genuinely good,
+documented testing story, and Vercel ships `MockLanguageModelV2`; LangChain has
+canned-response fakes. The accurate claim: the *pattern* is table stakes in
+mature ecosystems and simply absent on Apple's platform — FM ships no double at
+all. What remains uncommon anywhere: semantic-level session recording replayable
+across providers, and a conformance kit for third-party model packages);
+macros only where they delete real
 boilerplate (a `@AgentTool` function-to-tool macro is the one clear win);
 errors that carry their recovery action; DocC tutorials that teach durability
 patterns (idempotency, interrupts) rather than API syntax — the frameworks that
