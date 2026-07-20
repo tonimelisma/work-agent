@@ -17,7 +17,7 @@ Each library stands alone, and every dependency is an Apple framework.
 | Library | What it gives you | Depends on |
 |---|---|---|
 | **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — GPT, DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus Anthropic native. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
-| **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders; Mac app control on macOS. Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
+| **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders, document creation (PDF, docx, xlsx, pptx). Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **RuntimeCore** | Agent runs that survive crash, relaunch, and suspension: append-only journal, checkpoints, resumable interrupts, composable run limits, retry, and cross-provider failover mid-run | FoundationModels |
 | **RuntimeTesting** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
 | **Traces / Replay / Evals** | Every run is a complete typed trace — each attempt, tool call, result, token, and cost — stored locally, renderable in your UI, replayable against new models or prompts | RuntimeCore + RuntimeTesting |
@@ -63,8 +63,10 @@ let deepseek = OpenAICompatibleModel(.deepSeek, apiKey: key)
 
 A language model is only as useful as what it can touch. ToolKit ships
 `FoundationModels.Tool` conformances for the things Apple-platform apps
-actually have: the file system, the web, Contacts, Calendar, Reminders, and —
-on macOS — other applications. One import per platform gives you the full
+actually have: the file system, the web, Contacts, Calendar, Reminders — and
+document creation: PDF, docx, xlsx, and pptx produced natively, with no
+code-execution sandbox in the loop. For anything else — app control, SaaS
+services — mount an MCP server. One import per platform gives you the full
 platform-true set; the shared tools present identical schemas on both, so
 prompts, evals, and recorded runs transfer between your Mac and iPhone apps.
 File tools have a plain-path body on macOS and a security-scoped body on iOS

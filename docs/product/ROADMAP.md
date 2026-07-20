@@ -72,13 +72,17 @@ Per-format tool specs (templates, styling scope, append-vs-create semantics) are
 researched during planning; xlsx/pptx *reading* is the cheap adjacency to settle
 in the same plan.
 
-## 5. Cold-provider conformance — the neutrality proof
+## 5. The cross-provider eval suite — neutrality proven against every cloud
 
-Add a provider we did not design against and make every tool work through it
-unchanged, executor added without touching anything else (**NFR-001**: adding a
-provider requires no changes outside its executor and registration). Tool calling
-is where neutrality actually bites; passing this cold makes the package's core
-claim falsifiable. Failing it honestly rewrites the claim.
+Toni, 2026-07-19, replacing the earlier single-cold-provider idea ("5 is stupid.
+We have so many providers. We'll build an eval suite that runs against each
+cloud"): a live eval suite that runs the same scenarios — tool cycles, provider
+state round-trips, failover, streaming, every ToolKit tool — **against each
+configured cloud provider**, key-gated per provider, producing a pass/fail matrix
+(the README's conformance table becomes generated output, not prose). Neutrality
+stops being an assertion and becomes a continuously re-runnable measurement across
+all eleven providers; a new provider's executor is proven by joining the matrix
+(NFR-001 verified as a side effect, per provider, forever).
 
 ## 6. RuntimeCore completion — build the rest of what the README's core section says
 
@@ -97,12 +101,18 @@ The durable-run promises not yet in code, verified against the tree 2026-07-19:
 - **Testing doubles completion** — virtual clocks and fixture recorders beside
   `ScriptedLanguageModel` (both promised in the README's testing section).
 
-## 7. Provider fidelity tiers
+## 7. Provider fidelity tiers — neutral APIs for shared capabilities
 
 The capabilities the FM API doesn't model, per the three-tier design
-(plans/runtime-api.md §4): typed executor options (prompt caching, server-side
-tools, thinking budgets), namespaced ownership-tagged conversation state (partly
-shipped), direct clients for non-conversational APIs (batches, file stores).
+(plans/runtime-api.md §4): typed executor options, namespaced ownership-tagged
+conversation state (partly shipped), direct clients for non-conversational APIs
+(batches, file stores). **The API rule, decided 2026-07-19** (Toni: "Can 7 be
+provider neutral API so if several providers have a given feature we support all
+of them with the same API"): when a capability exists across several providers —
+prompt caching, server-side web search, thinking/reasoning budgets, compaction —
+it gets **one provider-neutral API** that each executor maps to its own wire
+form; only capabilities genuinely exclusive to one provider get provider-specific
+options.
 "We implement all capabilities any of the models has, even if provider-exclusive…
 we're not trying to neuter them" (FR-060). Includes the compaction strategies:
 tool-result clearing, summarize-and-fold, provider-native compaction (OpenAI
@@ -117,14 +127,15 @@ diffing, and recorded-case regression suites that run offline in CI. This is the
 observability half of the vision and currently absent from everything but the
 README.
 
-## 9. ToolKit completion for the Mac
+## 9. ToolKitPIM: Contacts, Calendar, Reminders
 
-The README's `ToolKitForMac` row promises Contacts, Calendar, and Reminders —
-`ToolKitPIM` (cross-platform domain target, schemas owned there) — and Mac app
-control — `ToolKitMacControl` (Apple Events/ScriptingBridge, macOS-only). Neither
-target exists. Per-tool specs are researched and written as part of planning this
-item ("we can research and figure out the specifics of the tools"). TCC
-usage-description obligations documented per tool.
+The cross-platform PIM domain target (EventKit/Contacts — local frameworks, no
+OAuth, schemas owned by the target). Per-tool specs are researched and written as
+part of planning this item ("we can research and figure out the specifics of the
+tools"); TCC usage-description obligations documented per tool. **Mac app control
+is removed, not deferred** — Toni, 2026-07-19: "No mac control. Remove it.
+There's MCPs for that." Apps that want app control mount an MCP server for it
+through item 3's foundation; we never build `ToolKitMacControl`.
 
 ## 10. API hardening
 

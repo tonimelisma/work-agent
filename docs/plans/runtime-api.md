@@ -201,16 +201,17 @@ DAG is the contract; a module that grows a second job is a bug:
               │         coordinator,        ▲                  ▲
               │         tool host    ┌──────┼────────┬─────┐   │
               │              ▲       │      │        │     │   │
-              │              │  ToolKitFiles ToolKitWeb ToolKitPIM ToolKitMacControl
-              │              │  (Foundation) (URLSession) (Contacts, (AppleEvents/
-              │              │                            EventKit,  ScriptingBridge,
-              │              │                            Reminders) macOS-only)
+              │              │  ToolKitFiles ToolKitWeb ToolKitPIM ToolKitDocuments
+              │              │  (Foundation) (URLSession) (Contacts, (PDFKit +
+              │              │                            EventKit,  OOXML/ZIP —
+              │              │                            Reminders) pdf/docx/xlsx/pptx)
               │              │        ▲          ▲           ▲          ▲
               │              │        └────┬─────┴─────┬─────┴──────────┘
               │              │      ToolKitForMac   ToolKitForiOS   (umbrella products:
               │              │      Files+Web+PIM   Files+Web+PIM    what apps import;
-              │              │      +MacControl     +iOS-only target  domain targets are
-              │              │                      when one exists   where code lives)
+              │              │      +Documents      +Documents,      domain targets are
+              │              │                      +iOS-only target  where code lives)
+              │              │                      when one exists
               │              │
               │        Replay / Evals ──▶ RuntimeTesting
               │              ▲
@@ -247,9 +248,10 @@ Rules the DAG encodes:
   guts (docx parsing, paging, budgets) and differ only at access acquisition
   (plain paths on macOS, security-scoped URLs on iOS). Domain targets own the
   tool *schemas*, so `read_file` presents identically on both platforms and
-  prompts, evals, and recorded replays transfer. `ToolKitMacControl` is
-  macOS-only; an iOS-only target is created when the first real iOS-only tool
-  exists, not before. Individual domain products can be exposed for
+  prompts, evals, and recorded replays transfer. No app-control target exists or
+  will (Toni, 2026-07-19: "No mac control. Remove it. There's MCPs for that");
+  an iOS-only target is created when the first real iOS-only tool exists, not
+  before. Individual domain products can be exposed for
   specialists at zero cost.
 - Tool *specs* (what each tool does, its schema, its budgets) are researched and
   written per tool before it's built — the file/web specs in
