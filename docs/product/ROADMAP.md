@@ -40,51 +40,13 @@ providers and GLM currently can't authenticate (rejects raw bearer; needs JWT
 signing from its `id.secret` key); a gated on-device `SystemLanguageModel` test on
 an eligible device; human verification of the send → quit → resume path.
 
-## 3. Email via MCP: Gmail and Outlook — and the MCP foundation they force
+**Provider quota/keys Toni needs to supply** (status 2026-07-19; everything else
+here is agent work): **fund OpenAI** (key valid, 429 — no quota) and **fund
+MiniMax** (key valid, 402 — no credit); **obtain keys for xAI, Meta, and Thinking
+Machines** (none held — three of eleven providers have never been exercised);
+**a Brave Search API key** for FR-083. GLM needs code (JWT signing), not money.
 
-Toni, 2026-07-19: "Gmail and Outlook via MCP. No one uses the local mail app. Put
-them ASAP." Email is a headline capability of every general work assistant
-(Cowork's Gmail connector is tier one) and was previously absent from this list.
-The path is MCP, not Apple Events — so this item *is* the MCP item, pulled up from
-the bottom of the backlog: the MCP client behind a package trait, the explicit
-schema degradation ladder (`GenerationSchema` accepts a strict JSON Schema subset;
-unsupported keywords reported with path and fallback, never silently flattened),
-with **Gmail and Outlook MCP servers as the proving integrations** — real-world
-schema corpora, OAuth handled by the servers, not by us.
-
-## 4. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
-
-Toni, 2026-07-19: "PDFs too", then "Yes all office doc creation too ASAP. Google
-via MCP if available. Docx xlsx pptx locally." A `ToolKitDocuments` product:
-
-- **PDF** — PDFKit, native.
-- **docx / xlsx / pptx creation, locally** — all three are OOXML zip containers;
-  the same ZIPFoundation path that reads docx writes them. Native Swift, no
-  code-execution sandbox (the competitors all route document generation through
-  sandboxed code; we don't have to — a differentiator worth stating in the
-  README when built).
-- **Google Docs/Sheets/Slides via MCP, if available** — rides item 3's MCP
-  foundation; use existing Google Workspace MCP servers, OAuth theirs. If no
-  usable server exists at planning time, the local formats ship and Google
-  waits — we do not build our own Google OAuth integration.
-
-Per-format tool specs (templates, styling scope, append-vs-create semantics) are
-researched during planning; xlsx/pptx *reading* is the cheap adjacency to settle
-in the same plan.
-
-## 5. The cross-provider eval suite — neutrality proven against every cloud
-
-Toni, 2026-07-19, replacing the earlier single-cold-provider idea ("5 is stupid.
-We have so many providers. We'll build an eval suite that runs against each
-cloud"): a live eval suite that runs the same scenarios — tool cycles, provider
-state round-trips, failover, streaming, every ToolKit tool — **against each
-configured cloud provider**, key-gated per provider, producing a pass/fail matrix
-(the README's conformance table becomes generated output, not prose). Neutrality
-stops being an assertion and becomes a continuously re-runnable measurement across
-all eleven providers; a new provider's executor is proven by joining the matrix
-(NFR-001 verified as a side effect, per provider, forever).
-
-## 6. RuntimeCore completion — build the rest of what the README's core section says
+## 3. RuntimeCore completion — build the rest of what the README's core section says
 
 The durable-run promises not yet in code, verified against the tree 2026-07-19:
 
@@ -101,7 +63,60 @@ The durable-run promises not yet in code, verified against the tree 2026-07-19:
 - **Testing doubles completion** — virtual clocks and fixture recorders beside
   `ScriptedLanguageModel` (both promised in the README's testing section).
 
-## 7. Provider fidelity tiers — neutral APIs for shared capabilities
+## 4. Traces, replay, and evals — the README section with no code behind it
+
+The journal exists; the product on top of it doesn't. Typed trajectory reads
+(run → turn → attempt → tool invocation → result with usage/timing/cost), replay
+of a recorded run against a different model/provider/prompt with trajectory
+diffing, and recorded-case regression suites that run offline in CI. This is the
+observability half of the vision and currently absent from everything but the
+README.
+
+## 5. Email via MCP: Gmail and Outlook — and the MCP foundation they force
+
+Toni, 2026-07-19: "Gmail and Outlook via MCP. No one uses the local mail app. Put
+them ASAP." Email is a headline capability of every general work assistant
+(Cowork's Gmail connector is tier one) and was previously absent from this list.
+The path is MCP, not Apple Events — so this item *is* the MCP item, pulled up from
+the bottom of the backlog: the MCP client behind a package trait, the explicit
+schema degradation ladder (`GenerationSchema` accepts a strict JSON Schema subset;
+unsupported keywords reported with path and fallback, never silently flattened),
+with **Gmail and Outlook MCP servers as the proving integrations** — real-world
+schema corpora, OAuth handled by the servers, not by us.
+
+## 6. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
+
+Toni, 2026-07-19: "PDFs too", then "Yes all office doc creation too ASAP. Google
+via MCP if available. Docx xlsx pptx locally." A `ToolKitDocuments` product:
+
+- **PDF** — PDFKit, native.
+- **docx / xlsx / pptx creation, locally** — all three are OOXML zip containers;
+  the same ZIPFoundation path that reads docx writes them. Native Swift, no
+  code-execution sandbox (the competitors all route document generation through
+  sandboxed code; we don't have to — a differentiator worth stating in the
+  README when built).
+- **Google Docs/Sheets/Slides via MCP, if available** — rides item 5's MCP
+  foundation; use existing Google Workspace MCP servers, OAuth theirs. If no
+  usable server exists at planning time, the local formats ship and Google
+  waits — we do not build our own Google OAuth integration.
+
+Per-format tool specs (templates, styling scope, append-vs-create semantics) are
+researched during planning; xlsx/pptx *reading* is the cheap adjacency to settle
+in the same plan.
+
+## 7. The cross-provider eval suite — neutrality proven against every cloud
+
+Toni, 2026-07-19, replacing the earlier single-cold-provider idea ("5 is stupid.
+We have so many providers. We'll build an eval suite that runs against each
+cloud"): a live eval suite that runs the same scenarios — tool cycles, provider
+state round-trips, failover, streaming, every ToolKit tool — **against each
+configured cloud provider**, key-gated per provider, producing a pass/fail matrix
+(the README's conformance table becomes generated output, not prose). Neutrality
+stops being an assertion and becomes a continuously re-runnable measurement across
+all eleven providers; a new provider's executor is proven by joining the matrix
+(NFR-001 verified as a side effect, per provider, forever).
+
+## 8. Provider fidelity tiers — neutral APIs for shared capabilities
 
 The capabilities the FM API doesn't model, per the three-tier design
 (plans/runtime-api.md §4): typed executor options, namespaced ownership-tagged
@@ -118,15 +133,6 @@ we're not trying to neuter them" (FR-060). Includes the compaction strategies:
 tool-result clearing, summarize-and-fold, provider-native compaction (OpenAI
 `/responses/compact`, Anthropic context editing) behind one `RunPolicy`.
 
-## 8. Traces, replay, and evals — the README section with no code behind it
-
-The journal exists; the product on top of it doesn't. Typed trajectory reads
-(run → turn → attempt → tool invocation → result with usage/timing/cost), replay
-of a recorded run against a different model/provider/prompt with trajectory
-diffing, and recorded-case regression suites that run offline in CI. This is the
-observability half of the vision and currently absent from everything but the
-README.
-
 ## 9. ToolKitPIM: Contacts, Calendar, Reminders
 
 The cross-platform PIM domain target (EventKit/Contacts — local frameworks, no
@@ -135,7 +141,7 @@ part of planning this item ("we can research and figure out the specifics of the
 tools"); TCC usage-description obligations documented per tool. **Mac app control
 is removed, not deferred** — Toni, 2026-07-19: "No mac control. Remove it.
 There's MCPs for that." Apps that want app control mount an MCP server for it
-through item 3's foundation; we never build `ToolKitMacControl`.
+through item 5's foundation; we never build `ToolKitMacControl`.
 
 ## 10. API hardening
 
@@ -161,7 +167,7 @@ differentiated iOS claim. Feeds the iOS reference app (app repo's backlog).
 
 A local-first trace/replay/eval inspection app — LangSmith's job, no cloud —
 generalized from the reference app's trace UI. Scheduled only if PM-grade
-inspection demand shows up in real use; depends on item 8's replay foundations.
+inspection demand shows up in real use; depends on item 4's replay foundations.
 
 ## Parked with reasons
 

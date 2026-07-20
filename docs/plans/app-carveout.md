@@ -46,9 +46,12 @@ Verify: `xcodebuild -scheme "Work Agent" build test` against the remote referenc
 
 - `git rm -r "Work Agent" "Work AgentTests" "Work Agent.xcodeproj" docs/app`.
 - Move the package to root: `git mv AgentKit/Package.swift Package.swift`,
+  `git mv AgentKit/Package.resolved Package.resolved`,
   `git mv AgentKit/Sources Sources`, `git mv AgentKit/Tests Tests`; delete the
-  empty `AgentKit/` folder. Root `Package.swift` is what SwiftPM requires for
-  remote consumption — this *is* the "make this an SPM repo" step.
+  empty `AgentKit/` folder (verified 2026-07-19: those four entries are the
+  folder's entire contents). The `AGENTS.md → CLAUDE.md` symlink stays. Root
+  `Package.swift` is what SwiftPM requires for remote consumption — this *is*
+  the "make this an SPM repo" step.
 - Scrub: README's app mentions (two-line reference-apps section now links the new
   repo), ENGINEERING.md's app sections (move nothing — they're already summarized
   in APP.md which left; delete the app halves here), CLAUDE.md's "app still lives
