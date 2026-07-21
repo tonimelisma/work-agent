@@ -150,7 +150,13 @@ recorded provider traffic before committing.
   carve-out. Dependencies: Apple frameworks only, except ZIPFoundation, SwiftSoup,
   and (opt-in) the MCP swift-sdk.
 - **Never add UI tests.** Coverage is unit and contract level; acceptance is
-  verified by running things.
+  verified by running things — `swift test`, `xcodebuild build`/`test`, gated
+  live-provider smoke tests, never by driving the app's GUI.
+- **Never manually test the app.** No computer-use, Accessibility, or other
+  GUI-automation tooling against Work Agent (or its built .app) — not to click
+  through a flow, not to eyeball a screen, not to enter credentials on its
+  behalf. If a plan step calls for manual/GUI verification, do the automated
+  parts (build, tests) and name the GUI part as a gap for Toni to run himself.
 - Code increments: worktree + PR, squash merge, delete branch. Doc-only increments:
   straight to main.
 - No secrets in commits. No telemetry anywhere in the package.
