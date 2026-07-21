@@ -9,7 +9,7 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 87 package tests, green on both platforms. MIT. This repo is
+`ToolKitForMac`). 94 package tests, green on both platforms. MIT. This repo is
 SPM-root — there is no app in this tree; a native reference app is a separate,
 later effort in its own repo (2026-07-20: "just delete it from this repo, and
 move the current repo to be an SPM repo for WorkKit").
@@ -53,7 +53,10 @@ move the current repo to be an SPM repo for WorkKit").
   thinking blocks — verified live against real endpoints. *Why it matters:* these
   requirements are invisible until the second request of an agent loop, and
   "we're not trying to neuter them" (FR-060's principle; full fidelity work
-  continues on the roadmap).
+  continues on the roadmap). Anthropic `redacted_thinking` blocks round-trip the
+  same way (fixture-tested, not yet verified live — triggering a real redacted
+  block isn't deterministic, so this waits on real usage rather than a synthetic
+  live probe).
 
 ## The Recorder: durable-run substrate, attach-only
 

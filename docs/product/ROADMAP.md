@@ -34,19 +34,7 @@ code (JWT auth; "the second best open source model").
 
 ---
 
-## 1. Anthropic `redacted_thinking` blocks dropped (2026-07-20 review, unresolved)
-
-**Ready plan: [plans/redacted-thinking-fix.md](../plans/redacted-thinking-fix.md).**
-
-**`Sources/Executors/StreamParsing.swift`: the parser ignores `redacted_thinking`
-blocks; Anthropic requires thinking blocks replayed in tool loops, so a
-conversation that triggers one breaks on its next request.** Carried over from
-the 2026-07-20 full-repo review's errata — the other 8 ranked findings from that
-same review were fixed in one increment (see PRODUCT.md/ENGINEERING.md for what
-shipped), but this one wasn't in that increment's plan and needs its own before
-it's true that Anthropic's full reasoning fidelity round-trips correctly.
-
-## 2. Verify the core, close the gaps
+## 1. Verify the core, close the gaps
 
 **Ready plan: [plans/live-verification.md](../plans/live-verification.md).**
 Everything here is unblocked now that all keys and quota exist:
@@ -65,7 +53,7 @@ Everything here is unblocked now that all keys and quota exist:
   model, put it back"): the `id.secret` JWT signing its endpoints require, so
   the eleventh provider verifies like the other ten.
 
-## 3. Email: Gmail and Outlook via MCP
+## 2. Email: Gmail and Outlook via MCP
 
 "Gmail and Outlook via MCP. No one uses the local mail app. Put them ASAP." The
 assistant's killer capability, and it carries the MCP foundation with it: the
@@ -75,7 +63,7 @@ fallback, never silently flattened), Gmail and Outlook servers as the proving
 integrations — real-world schema corpora, OAuth handled by the servers, not by us.
 The Recorder's journal-before-execute guard starts earning rent here: "may have sent" is asked about, never silently repeated.
 
-## 4. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
+## 3. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
 "Yes all office doc creation too ASAP. Google via MCP if available. Docx xlsx pptx
 locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (all
@@ -87,7 +75,7 @@ asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
 planning; xlsx/pptx *reading* settled with wave 2.
 
-## 5. ToolKitPIM: Contacts, Calendar, Reminders
+## 4. ToolKitPIM: Contacts, Calendar, Reminders
 
 "What's on my calendar" — the local-first answer to Cowork's OAuth connectors:
 EventKit/Contacts frameworks, no sign-in, works offline. Cross-platform domain
@@ -105,7 +93,7 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **Recorder completion**: output budgets + spill-to-store, the `read_tool_output` history tool, compaction-made-safe-by-recall | Real agent use hitting the context window (per-tool paging in `read_file`/`fetch_url` carries the package until then) |
 | **Replay + evals**: recordings replayed against other models/prompts, trajectory diffing, recorded-case CI suites | We need regression coverage when swapping models — or a developer asks |
 | **Provider fidelity tiers**: neutral prompt-caching API first, then hosted-search/thinking-budget neutral APIs, direct batch/file-store clients | Real usage data shows caching pays; a real feature needs the rest |
-| **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; item 2's per-provider smokes carry the package until then |
+| **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; item 1's per-provider smokes carry the package until then |
 | **API hardening**: DocC, `Examples/`, public conformance kit | A developer other than us asks how to use or certify against the package |
 | **Publication**: name decision confirmed, README re-audit, first public tag | OS 27 GA **and** demand signals |
 | **iOS**: `ToolKitForiOS`, security-scoped file bodies, suspension validation | A real iOS consumer exists; the suspension-safe checkpoint design is already done and costs nothing to keep |

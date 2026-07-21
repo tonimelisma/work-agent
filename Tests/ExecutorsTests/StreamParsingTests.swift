@@ -59,6 +59,22 @@ func anthropicParserRejectsMissingToolIdentity() {
     }
 }
 
+@Test("A redacted_thinking block start yields exactly one reasoning event carrying its data")
+func anthropicParserCarriesRedactedThinking() throws {
+    let line = #"data: {"type":"content_block_start","index":0,"content_block":{"type":"redacted_thinking","data":"opaque-blob"}}"#
+    var parser = AnthropicStreamParser()
+    let events = try parser.consume(line, lineNumber: 1)
+    #expect(events == [.reasoning(text: "", signature: nil, metadata: ["anthropic.redacted_thinking": "opaque-blob"])])
+}
+
+@Test("A redacted_thinking block start missing data yields no event and no throw")
+func anthropicParserToleratesMissingRedactedData() throws {
+    let line = #"data: {"type":"content_block_start","index":0,"content_block":{"type":"redacted_thinking"}}"#
+    var parser = AnthropicStreamParser()
+    let events = try parser.consume(line, lineNumber: 1)
+    #expect(events.isEmpty)
+}
+
 @Test("Anthropic HTTP-200 stream errors propagate as typed failures")
 func anthropicParserPropagatesStreamErrors() {
     let line = #"data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#
