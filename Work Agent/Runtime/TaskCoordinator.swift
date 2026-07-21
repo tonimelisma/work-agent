@@ -1,19 +1,22 @@
 import Foundation
+import FoundationModels
+import Recorder
 
 // REQ: agent-loop-implementation.md §5 — TaskCoordinator is an actor above
 // LanguageModelSession, not a replacement session. It owns durable identity,
 // checkpointing, and FR-006 automatic failover; it does not know about
 // LanguageModel/Tool types — those are erased into the two async closures the
-// caller supplies (built with `runSessionAttempt`), so the coordinator itself has
-// no FoundationModels import and can be tested with plain scripted closures.
+// caller supplies (built with `runSessionAttempt`), so the coordinator itself can
+// be tested with plain scripted closures (the FoundationModels import here is only
+// for the empty `Transcript` literal on the cancellation path below).
 
 /// One provider attempt, erased to a plain async function: given the archive to
 /// resume from (nil for a fresh run), produce the resulting archive or throw.
-public typealias RunAttemptExecutor = @Sendable (TranscriptArchive?) async throws -> RunAttemptResult
+typealias RunAttemptExecutor = @Sendable (TranscriptArchive?) async throws -> RunAttemptResult
 
-public struct RunHandle: Sendable {
-    public let id: RunID
-    public let events: AsyncThrowingStream<RunEvent, Error>
+struct RunHandle: Sendable {
+    let id: RunID
+    let events: AsyncThrowingStream<RunEvent, Error>
     private let task: Task<Void, Never>
 
     init(id: RunID, events: AsyncThrowingStream<RunEvent, Error>, task: Task<Void, Never>) {
@@ -22,16 +25,16 @@ public struct RunHandle: Sendable {
         self.task = task
     }
 
-    public func cancel() {
+    func cancel() {
         task.cancel()
     }
 }
 
-public actor TaskCoordinator {
+actor TaskCoordinator {
     private let journal: any RunJournal
     private let checkpoints: any CheckpointStore
 
-    public init(journal: any RunJournal, checkpoints: any CheckpointStore) {
+    init(journal: any RunJournal, checkpoints: any CheckpointStore) {
         self.journal = journal
         self.checkpoints = checkpoints
     }
@@ -41,7 +44,7 @@ public actor TaskCoordinator {
     /// prior turns of an ongoing conversation (not a paused run — that's
     /// `resume(_:)`) forward, so a fallback triggered mid-conversation still
     /// replays from real history instead of an empty transcript.
-    public func start(
+    func start(
         resumingFrom archive: TranscriptArchive? = nil,
         primaryID: String,
         primary: @escaping RunAttemptExecutor,
@@ -54,7 +57,7 @@ public actor TaskCoordinator {
     }
 
     /// Resumes a paused/interrupted run from its last checkpoint (FR-072, FR-073).
-    public func resume(
+    func resume(
         _ checkpoint: RunCheckpoint,
         primaryID: String,
         primary: @escaping RunAttemptExecutor,

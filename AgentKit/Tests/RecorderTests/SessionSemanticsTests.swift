@@ -1,12 +1,12 @@
 import Foundation
 import FoundationModels
 import Testing
-@testable import RuntimeCore
+@testable import Recorder
 import RuntimeTesting
 
-// REQ: agent-loop-implementation.md §3, §8 — the durability guarantees RuntimeCore
+// REQ: agent-loop-implementation.md §3, §8 — the durability guarantees Recorder
 // is built on top of (cancellation, revert-on-failure, tool-call ordering) are
-// Apple's session semantics, not RuntimeCore's own code. Migrated from
+// Apple's session semantics, not Recorder's own code. Migrated from
 // Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/SessionSemanticsTests.swift
 // onto the reusable `ScriptedLanguageModel` (RuntimeTesting) instead of an ad hoc
 // per-test executor, so the assumption keeps being checked after the POC is deleted.

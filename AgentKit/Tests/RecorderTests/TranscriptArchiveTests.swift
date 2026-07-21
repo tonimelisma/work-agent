@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 import Testing
-@testable import RuntimeCore
+@testable import Recorder
 
 // REQ: FR-006 — migrated from Experiments/FoundationModelsPOC's FoundationModelsPOCTests.swift.
 

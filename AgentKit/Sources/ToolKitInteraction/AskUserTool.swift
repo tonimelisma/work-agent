@@ -3,7 +3,7 @@ import FoundationModels
 
 // REQ: FR-080 — ask_user: suspend the turn to ask the user 1-4 questions, resume on
 // answer (tool-architecture.md §3). The presenter protocol is the app-injected seam
-// (this ToolKit product has no dependency on RuntimeCore or the app's UI).
+// (this ToolKit product has no dependency on Recorder or the app's UI).
 //
 // Scope note (increment-4 DOR item): this suspends the in-memory call — it does not
 // yet persist the suspension durably across an app restart. Full crash-safe

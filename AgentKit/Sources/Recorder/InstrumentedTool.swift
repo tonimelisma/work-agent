@@ -6,26 +6,26 @@ import ToolVocabulary
 // session `InstrumentedTool<Base>` wrappers so every plain `FoundationModels.Tool`
 // gets tracing-before-budget and durable invocation identity just by running
 // through the runtime, with no second tool protocol to conform to.
-public struct InstrumentedTool<Base: Tool>: Tool where Base.Arguments: Generable {
-    public typealias Arguments = Base.Arguments
-    public typealias Output = Base.Output
+struct InstrumentedTool<Base: Tool>: Tool where Base.Arguments: Generable {
+    typealias Arguments = Base.Arguments
+    typealias Output = Base.Output
 
-    public var name: String { base.name }
-    public var description: String { base.description }
+    var name: String { base.name }
+    var description: String { base.description }
 
     private let base: Base
     private let annotations: ToolAnnotations
     private let runID: RunID
     private let journal: any RunJournal
 
-    public init(_ base: Base, annotations: ToolAnnotations = .conservativeDefault, runID: RunID, journal: any RunJournal) {
+    init(_ base: Base, annotations: ToolAnnotations = .conservativeDefault, runID: RunID, journal: any RunJournal) {
         self.base = base
         self.annotations = annotations
         self.runID = runID
         self.journal = journal
     }
 
-    public func call(arguments: Base.Arguments) async throws -> Base.Output {
+    func call(arguments: Base.Arguments) async throws -> Base.Output {
         let invocationID = ToolInvocationID()
         try? await journal.append(
             .toolRegistered(runID, invocationID, name: name, effect: annotations.effect),

@@ -1,7 +1,8 @@
 import Foundation
 import FoundationModels
 import Testing
-@testable import RuntimeCore
+import Recorder
+@testable import Work_Agent
 
 // REQ: FR-006, FR-073, agent-loop-implementation.md §5 — the coordinator's actual
 // job: durable journaling/checkpointing and automatic cross-provider failover,

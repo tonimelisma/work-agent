@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import RuntimeCore
+@testable import Recorder
 
 // REQ: agent-loop-implementation.md §6 — migrated from Experiments/FoundationModelsPOC.
 

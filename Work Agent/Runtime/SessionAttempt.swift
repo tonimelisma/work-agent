@@ -1,14 +1,15 @@
 import Foundation
 import FoundationModels
+import Recorder
 
 // REQ: agent-loop-implementation.md §3 — preserve Apple's intelligence-session types.
-// This is the one place RuntimeCore constructs a `LanguageModelSession`; it does not
+// This is the one place the app constructs a `LanguageModelSession`; it does not
 // wrap `Transcript`, `Tool`, or `GenerationSchema` in a lookalike.
 
 /// What one attempt against one executor produced.
-public struct RunAttemptResult: Sendable {
-    public var archive: TranscriptArchive
-    public init(archive: TranscriptArchive) {
+struct RunAttemptResult: Sendable {
+    var archive: TranscriptArchive
+    init(archive: TranscriptArchive) {
         self.archive = archive
     }
 }
@@ -16,7 +17,7 @@ public struct RunAttemptResult: Sendable {
 /// Runs one full model/tool/model cycle against `model`, resuming from `archive` when
 /// given. Apple's `LanguageModelSession` resolves any tool round-trips internally;
 /// one attempt here is one `respond`/`streamResponse` call, not a manual turn loop.
-public func runSessionAttempt<Model: LanguageModel>(
+func runSessionAttempt<Model: LanguageModel>(
     model: Model,
     tools: [any Tool],
     instructions: String,

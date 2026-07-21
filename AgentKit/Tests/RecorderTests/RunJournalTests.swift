@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import RuntimeCore
+@testable import Recorder
 import ToolVocabulary
 
 // REQ: agent-loop-implementation.md §3 — the append-only run journal is execution

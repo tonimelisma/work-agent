@@ -7,14 +7,14 @@ import PackageDescription
 // decided at the Publication horizon (docs/product/ROADMAP.md).
 //
 // ToolKit* products depend only on FoundationModels, platform frameworks, and
-// ToolVocabulary — never on RuntimeCore (runtime-api.md §6): a developer can use
+// ToolVocabulary — never on Recorder (runtime-api.md §6): a developer can use
 // ToolKitFiles with a vendor model package and no durable runs at all.
 let package = Package(
     name: "AgentKit",
     platforms: [.macOS("27.0"), .iOS("27.0")],
     products: [
         .library(name: "ToolVocabulary", targets: ["ToolVocabulary"]),
-        .library(name: "RuntimeCore", targets: ["RuntimeCore"]),
+        .library(name: "Recorder", targets: ["Recorder"]),
         .library(name: "Executors", targets: ["Executors"]),
         .library(name: "RuntimeTesting", targets: ["RuntimeTesting"]),
         .library(name: "ToolKitFiles", targets: ["ToolKitFiles"]),
@@ -32,7 +32,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "ToolVocabulary"),
-        .target(name: "RuntimeCore", dependencies: ["ToolVocabulary"]),
+        .target(name: "Recorder", dependencies: ["ToolVocabulary"]),
         .target(name: "Executors", dependencies: ["ToolVocabulary"]),
         .target(name: "RuntimeTesting"),
         .target(
@@ -49,8 +49,8 @@ let package = Package(
             dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction"]
         ),
         .testTarget(
-            name: "RuntimeCoreTests",
-            dependencies: ["RuntimeCore", "RuntimeTesting", "ToolVocabulary"]
+            name: "RecorderTests",
+            dependencies: ["Recorder", "RuntimeTesting", "ToolVocabulary"]
         ),
         .testTarget(
             name: "ExecutorsTests",

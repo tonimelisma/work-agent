@@ -87,7 +87,7 @@ enum FileKind {
 }
 
 /// Token budgeting, applied uniformly by every file tool (tool-architecture.md §2's
-/// runner budgets, reapplied per-tool here since ToolKit doesn't depend on RuntimeCore).
+/// runner budgets, reapplied per-tool here since ToolKit doesn't depend on Recorder).
 enum OutputBudget {
     static func truncate(_ text: String, maximumCharacters: Int, recoveryHint: String) -> String {
         guard text.count > maximumCharacters else { return text }

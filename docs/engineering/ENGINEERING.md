@@ -1,7 +1,7 @@
 # Work Agent — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-07-19.
+change: 2026-07-20.
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -41,18 +41,16 @@ AgentKit/                                    local SPM package (see Why below)
   Package.swift                              name "AgentKit" — working label, not final
   Sources/
     ToolVocabulary/                          ToolAnnotations, effect/budget value types
-    RuntimeCore/
+    Recorder/
       Identifiers.swift                      RunID / AttemptID / ToolInvocationID
       RunEvent.swift                         the append-only journal's event vocabulary
       TranscriptArchive.swift                versioned Transcript persistence + replay
       SchemaBridge.swift                     JSON Schema → GenerationSchema
-      RunPolicy.swift                        attempt-ceiling composable limit
       RunJournal.swift                       protocol + FileRunJournal (fsync'd jsonl)
       CheckpointStore.swift                  protocol + FileCheckpointStore (atomic JSON)
       RunStatus.swift                        RunStatus, RunCheckpoint
-      InstrumentedTool.swift                 tracing/durable-identity Tool wrapper
-      SessionAttempt.swift                   the one place a LanguageModelSession is built
-      TaskCoordinator.swift                  durable orchestration + FR-006 failover
+      InstrumentedTool.swift                 tracing/durable-identity Tool wrapper (internal)
+      RecorderStore.swift                    read/append façade — item 4's cost-display API
     Executors/
       OpenAICompatibleExecutor.swift          9 curated providers, one executor
       AnthropicExecutor.swift                 Anthropic Messages
@@ -66,7 +64,7 @@ AgentKit/                                    local SPM package (see Why below)
     ToolKitInteraction/                       ask_user, update_plan
     ToolKitForMac/                            umbrella: re-exports the three above
   Tests/
-    RuntimeCoreTests/                         20 tests: durability, failover, semantics
+    RecorderTests/                            16 tests: durability, semantics
     ExecutorsTests/                           5 tests: SSE parsing, both wire formats
     ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
     ToolKitWebTests/                          13 tests: Markdown rendering, SSRF, search
@@ -75,6 +73,10 @@ AgentKit/                                    local SPM package (see Why below)
 Work Agent/
   Work_AgentApp.swift             App: NSApplicationDelegateAdaptor, ModelContainer
   AppDelegate.swift                pauses in-flight runs before quitting (FR-072)
+  Runtime/
+    TaskCoordinator.swift          durable orchestration + FR-006 failover (app-internal)
+    RunPolicy.swift                 attempt-ceiling composable limit (app-internal)
+    SessionAttempt.swift            the one place a LanguageModelSession is built
   Providers/
     ModelRegistry.swift          models.dev types + lenient decoding
     RegistryLoader.swift         bundled snapshot + eager-ish network refresh
@@ -98,7 +100,7 @@ Work Agent/
     ChatView.swift               NavigationSplitView + transcript + composer (FR-068)
   Resources/
     models-dev-snapshot.json     bundled registry (167 providers), refreshed on launch
-Work AgentTests/                 45 unit + 5 gated live-smoke tests (through AgentKit)
+Work AgentTests/                 50 unit + 5 gated live-smoke tests (through AgentKit)
 docs/                            specs
 ```
 
@@ -109,10 +111,10 @@ docs/                            specs
 | Language | Swift, MainActor-default isolation | Native macOS is the point |
 | UI | SwiftUI (`@Observable`) | — |
 | Tests | swift-testing | Why below |
-| Structure | Work Agent app + one local AgentKit SPM package (RuntimeCore, Executors, ToolVocabulary, RuntimeTesting) | Why below |
+| Structure | Work Agent app + one local AgentKit SPM package (Recorder, Executors, ToolVocabulary, RuntimeTesting) | Why below |
 | App persistence | SwiftData (`ConversationRecord`) | docs/app/APP.md |
 | Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | docs/app/APP.md |
-| Provider chat/inference | AgentKit `Executors`, driven by `RuntimeCore.TaskCoordinator` | Why below |
+| Provider chat/inference | AgentKit `Executors`, driven by the app's `TaskCoordinator` | Why below |
 | Model registry | models.dev, bundled + refreshed | docs/app/APP.md |
 | Agent runtime (tools/loop) | `TaskCoordinator` above `LanguageModelSession`; durable journal + checkpoints | Why below |
 | Min macOS | **27.0** | NFR-009, Why below |
@@ -143,26 +145,30 @@ reverse dependency, app → package, is the only one that exists).
 per-conversation wrapper the view creates and drops as the sidebar selection changes.
 Switching conversations never cancels another conversation's in-flight run (FR-071).
 
-**Durability mechanics.** Each `TaskCoordinator.start`/`resume` call: records
-`attemptStarted` in the journal, runs one full `LanguageModelSession` cycle (Apple
-resolves any internal tool round-trips), commits the resulting `TranscriptArchive` and a
-checkpoint on success, or — on failure — automatically retries against a designated
-fallback executor with the archive replayed through `TranscriptArchive.replay(to:)`,
-which strips the failed provider's opaque metadata (FR-006). A `CancellationError`
-(the app quitting, or the user hitting Stop) checkpoints the run as
-`.pausedAwaitingResume` rather than losing it (FR-072/FR-073).
+**Durability mechanics.** `TaskCoordinator` is app code (`Work Agent/Runtime/`, ROADMAP
+item 1's conductor move — Recorder has no session-owning API left to export). Each
+`TaskCoordinator.start`/`resume` call: records `attemptStarted` in the journal (a
+`Recorder` type), runs one full `LanguageModelSession` cycle (Apple resolves any
+internal tool round-trips), commits the resulting `TranscriptArchive` and a checkpoint
+on success, or — on failure — automatically retries against a designated fallback
+executor with the archive replayed through `TranscriptArchive.replay(to:)`, which
+strips the failed provider's opaque metadata (FR-006). A `CancellationError` (the app
+quitting, or the user hitting Stop) checkpoints the run as `.pausedAwaitingResume`
+rather than losing it (FR-072/FR-073).
 
-**Tool tracing** is `InstrumentedTool<Base>`: any plain `FoundationModels.Tool` gets
-durable invocation identity and a registered/started/completed journal trail just by
-running through the runtime — no second tool protocol (runtime-api.md §3). Increment 4
-shipped the wrapper and proved the cycle; **increment 5 ships the first real tools**
-(`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac`) but
-does not yet wrap them in `InstrumentedTool` at the app integration point — the run id
-`InstrumentedTool` needs isn't available until `TaskCoordinator` starts the run, so
-tool calls aren't individually journaled yet. `ToolKit*` products depend only on
-`FoundationModels` and `ToolVocabulary`, never `RuntimeCore` — a consumer can use
-`ToolKitFiles` with a vendor model package and no durable runs at all
-(runtime-api.md §6).
+**Tool tracing** is `InstrumentedTool<Base>` (package-internal to `Recorder`, not
+publicly exported): any plain `FoundationModels.Tool` gets durable invocation identity
+and a registered/started/completed journal trail just by running through the runtime —
+no second tool protocol (runtime-api.md §3). Increment 4 shipped the wrapper and proved
+the cycle; **increment 5 ships the first real tools** (`ToolKitFiles`, `ToolKitWeb`,
+`ToolKitInteraction`, umbrella'd as `ToolKitForMac`) but does not yet wrap them in
+`InstrumentedTool` at the app integration point — the run id `InstrumentedTool` needs
+isn't available until `TaskCoordinator` starts the run, so tool calls aren't
+individually journaled yet. `ToolKit*` products depend only on `FoundationModels` and
+`ToolVocabulary`, never `Recorder` — a consumer can use `ToolKitFiles` with a vendor
+model package and no durable runs at all (runtime-api.md §6). `RecorderStore` is
+`Recorder`'s only other public surface: a read/append façade over the journal, added
+for item 4's cost display to read from — nothing outside the package uses it yet.
 
 ## Testing
 
@@ -181,20 +187,22 @@ func coordinatorFailsOverAutomatically() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-AgentKit's own suite (`swift test` inside `AgentKit/`) is 72 tests: transcript
+AgentKit's own suite (`swift test` inside `AgentKit/`) is 67 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
-(standing in for a process restart), `TaskCoordinator` success/failover/resume paths
-against plain scripted `RunAttemptExecutor` closures (no network needed to prove
-durability), `InstrumentedTool` journaling, the migrated Apple-session-semantics
-suite (cancellation, revert-on-failure, concurrent tool scheduling, cross-provider
-transcript reconstruction) built on the reusable `ScriptedLanguageModel`, and the
-increment-5 tools: file paging/docx/glob/regex/read-before-write (`ToolKitFilesTests`,
-using an in-memory `.docx` fixture built with ZIPFoundation rather than a committed
-binary), `fetch_url`'s Markdown rendering and SSRF host checks against a stubbed
-`URLSession` (`ToolKitWebTests`), and `ask_user`/`update_plan` validation against fake
-presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on both
-macOS 27 and iOS 27 (`xcodebuild ... -destination 'generic/platform=iOS'`).
+(standing in for a process restart), `InstrumentedTool` journaling, the migrated
+Apple-session-semantics suite (cancellation, revert-on-failure, concurrent tool
+scheduling, cross-provider transcript reconstruction) built on the reusable
+`ScriptedLanguageModel`, and the increment-5 tools: file paging/docx/glob/regex/
+read-before-write (`ToolKitFilesTests`, using an in-memory `.docx` fixture built with
+ZIPFoundation rather than a committed binary), `fetch_url`'s Markdown rendering and
+SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), and
+`ask_user`/`update_plan` validation against fake presenter/recorder doubles
+(`ToolKitInteractionTests`). It builds and passes on both macOS 27 and iOS 27
+(`xcodebuild ... -destination 'generic/platform=iOS'`). `TaskCoordinator`
+success/failover/resume paths against plain scripted `RunAttemptExecutor` closures
+(no network needed to prove durability) moved with the coordinator to the app's own
+suite (`Work AgentTests/ConductorTests.swift`).
 
 **Live smoke tests** (`LiveSmokeTests`, app target) hit real provider APIs through
 AgentKit's production executors, gated with `.enabled(if:)` on a `TEST_RUNNER_<VAR>` key
@@ -208,7 +216,12 @@ present. The interactive path — send a message, watch a tool actually get call
 its result stream back, quit mid-run, relaunch, see the paused banner, click Resume,
 switch conversations mid-stream — was not exercised in the running app; screen-control
 access to drive it was declined. This is a real gap between "the mechanics are
-unit-tested" and "a human watched it work."
+unit-tested" and "a human watched it work." (CLAUDE.md now codifies this as a rule,
+not a one-off gap: implementing agents never manually test the app via computer-use
+or other GUI automation, ever — including for ROADMAP item 1's conductor move, where
+`swift test`, `xcodebuild build`/`test` on macOS and iOS, and the demolition greps all
+went green, but the send → quit-mid-run → relaunch → resume click-through — the DOD's
+own ask — was not run by the implementing agent and needs Toni to run it once.)
 
 Tests are necessary and not sufficient. The DOD asks whether the deliverable was
 actually run, because a green suite over a feature nobody exercised is how agents
@@ -250,8 +263,10 @@ and never wraps the session: Executors, ToolKit, a passive **Recorder** (traces
 with timestamps and raw output, budgets+spill, the `read_tool_output` history
 tool, replay/evals, the journal-before-execute guard), standalone MCP, Testing,
 and small transcript utilities (save/load + the provider-state strip).
-`TaskCoordinator`/`RunPolicy` remain in the tree serving the app and are slated
-to become app-side code as the Recorder lands. Design: plans/runtime-api.md.
+`TaskCoordinator`/`RunPolicy`/`SessionAttempt` have moved to app code
+(`Work Agent/Runtime/`, ROADMAP item 1) — the package now has no session-owning
+public API left to export; its only conductor-adjacent public surface is
+`RecorderStore`, a read/append façade over the journal. Design: plans/runtime-api.md.
 
 ### Three layers: Foundation Models under a durable runtime under the host
 
@@ -290,7 +305,7 @@ Pre-1.0, everything co-evolving against a beta OS shares one package so releases
 stay atomic (separate packages would need coordinated releases on every Apple ABI
 change — it already broke once between beta seeds). No module is allowed a second
 job; the product DAG in plans/runtime-api.md §6 is the contract. ToolKit products
-depend only on FoundationModels + ToolVocabulary, never RuntimeCore, so tools work
+depend only on FoundationModels + ToolVocabulary, never Recorder, so tools work
 with any model package and no runtime. A repo/package split happens when release
 cadences demonstrably diverge or an external consumer needs a piece standalone —
 an event, not a prediction.

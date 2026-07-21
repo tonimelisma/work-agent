@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 import Testing
-@testable import RuntimeCore
+@testable import Recorder
 
 // REQ: FR-073 — a checkpoint written by one process instance is readable by another,
 // which is what "survives an app restart" means mechanically.

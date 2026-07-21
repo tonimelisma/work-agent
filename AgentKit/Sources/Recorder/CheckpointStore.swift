@@ -1,7 +1,7 @@
 import Foundation
 
 // REQ: FR-073 — a conversation's run status survives an app restart. The checkpoint
-// is the durable position TaskCoordinator resumes from; it must be written before
+// is the durable position the app's conductor resumes from; it must be written before
 // the run is exposed to the app as safely paused/completed (agent-loop-implementation.md §5).
 public protocol CheckpointStore: Sendable {
     func save(_ checkpoint: RunCheckpoint) async throws

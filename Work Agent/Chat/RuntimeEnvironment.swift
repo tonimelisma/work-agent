@@ -13,7 +13,7 @@
 
 import Foundation
 import Observation
-import RuntimeCore
+import Recorder
 import Executors
 import ToolKitForMac
 import FoundationModels

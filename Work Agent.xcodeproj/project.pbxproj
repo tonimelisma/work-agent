@@ -9,12 +9,12 @@
 /* Begin PBXBuildFile section */
 		0BD2416FA5A2D8C985D09B61 /* ToolVocabulary in Frameworks */ = {isa = PBXBuildFile; productRef = BEBA44969775BF3177AD1ABD /* ToolVocabulary */; };
 		4C5B46E9A4FBA8DCA2531FE9 /* Executors in Frameworks */ = {isa = PBXBuildFile; productRef = 36D345B1AB395ECACC2D03CC /* Executors */; };
-		83BD4F2685A36990DD8A5836 /* RuntimeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7442429E838E481FB1DEE284 /* RuntimeCore */; };
+		83BD4F2685A36990DD8A5836 /* Recorder in Frameworks */ = {isa = PBXBuildFile; productRef = 7442429E838E481FB1DEE284 /* Recorder */; };
 		9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */ = {isa = PBXBuildFile; productRef = D7254921814F5403D1B51BE9 /* ToolVocabulary */; };
 		B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */ = {isa = PBXBuildFile; productRef = A7CE4D8B9E87F09A046EDBE3 /* Executors */; };
 		CC1E45F19D0D15C5DDAD4AF8 /* RuntimeTesting in Frameworks */ = {isa = PBXBuildFile; productRef = DA6441EE862D3BF08E4C4272 /* RuntimeTesting */; };
 		D3E5413CB059AA3C93BB31F8 /* ToolKitForMac in Frameworks */ = {isa = PBXBuildFile; productRef = FBED4230912306957AFF0ED6 /* ToolKitForMac */; };
-		E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 52A84503B19A465455F7AB9C /* RuntimeCore */; };
+		E0C14823A0E2D520B36F6A41 /* Recorder in Frameworks */ = {isa = PBXBuildFile; productRef = 52A84503B19A465455F7AB9C /* Recorder */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,7 +48,7 @@
 		3BA48E7E30081230004FE0C7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */,
+				E0C14823A0E2D520B36F6A41 /* Recorder in Frameworks */,
 				B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */,
 				9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */,
 				D3E5413CB059AA3C93BB31F8 /* ToolKitForMac in Frameworks */,
@@ -57,7 +57,7 @@
 		3BA48E8B30081232004FE0C7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				83BD4F2685A36990DD8A5836 /* RuntimeCore in Frameworks */,
+				83BD4F2685A36990DD8A5836 /* Recorder in Frameworks */,
 				4C5B46E9A4FBA8DCA2531FE9 /* Executors in Frameworks */,
 				0BD2416FA5A2D8C985D09B61 /* ToolVocabulary in Frameworks */,
 				CC1E45F19D0D15C5DDAD4AF8 /* RuntimeTesting in Frameworks */,
@@ -102,7 +102,7 @@
 			);
 			name = "Work Agent";
 			packageProductDependencies = (
-				52A84503B19A465455F7AB9C /* RuntimeCore */,
+				52A84503B19A465455F7AB9C /* Recorder */,
 				A7CE4D8B9E87F09A046EDBE3 /* Executors */,
 				D7254921814F5403D1B51BE9 /* ToolVocabulary */,
 				FBED4230912306957AFF0ED6 /* ToolKitForMac */,
@@ -129,7 +129,7 @@
 			);
 			name = "Work AgentTests";
 			packageProductDependencies = (
-				7442429E838E481FB1DEE284 /* RuntimeCore */,
+				7442429E838E481FB1DEE284 /* Recorder */,
 				36D345B1AB395ECACC2D03CC /* Executors */,
 				BEBA44969775BF3177AD1ABD /* ToolVocabulary */,
 				DA6441EE862D3BF08E4C4272 /* RuntimeTesting */,
@@ -483,15 +483,15 @@
 			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
 			productName = Executors;
 		};
-		52A84503B19A465455F7AB9C /* RuntimeCore */ = {
+		52A84503B19A465455F7AB9C /* Recorder */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
-			productName = RuntimeCore;
+			productName = Recorder;
 		};
-		7442429E838E481FB1DEE284 /* RuntimeCore */ = {
+		7442429E838E481FB1DEE284 /* Recorder */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
-			productName = RuntimeCore;
+			productName = Recorder;
 		};
 		A7CE4D8B9E87F09A046EDBE3 /* Executors */ = {
 			isa = XCSwiftPackageProductDependency;

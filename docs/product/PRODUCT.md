@@ -9,9 +9,9 @@ conversation sidebar — are recorded in [../app/APP.md](../app/APP.md) and leav
 the app.)
 
 AgentKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
-products `RuntimeCore`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
+products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 72 package tests, green on both platforms. MIT.
+`ToolKitForMac`). 67 package tests, green on both platforms. MIT.
 
 ---
 
@@ -55,18 +55,18 @@ ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
   "we're not trying to neuter them" (FR-060's principle; full fidelity work
   continues on the roadmap).
 
-## Run mechanics (durable runs — repositioned 2026-07-19)
+## Run mechanics (durable runs — repositioned 2026-07-19, migration executed 2026-07-20)
 
 **The attachment pivot, recorded:** after pressure-testing durability's value
 ("can you really explain the value of durability here?… It's more your hobby
 horse than mine"; "bypassing the core FM API… is horrible"), the public-API
 direction changed — see plans/runtime-api.md. What's below remains a true record
-of what is *built and working in the app today*; its future is redirection, not
-deletion: the journal/checkpoint/archive internals migrate inside the Recorder
+of what is *built and working in the app today*; its future was redirection, not
+deletion: the journal/checkpoint/archive internals now live inside the Recorder
 (where their daily value is traces, not crash insurance), `TaskCoordinator` and
-`RunPolicy` leave the public API and become reference-app code, and the
-provider-state strip becomes a small utility. FR-006/072/073 stay true as *app*
-features delivered by this code.
+`RunPolicy` have left the public API and are now reference-app code
+(`Work Agent/Runtime/`), and the provider-state strip is `TranscriptArchive`'s
+small utility. FR-006/072/073 stay true as *app* features delivered by this code.
 
 - **FR-006 — Implemented.** A run whose provider fails mid-flight preserves its
   state and **automatically** resumes on a designated fallback, the switch recorded
@@ -92,7 +92,7 @@ features delivered by this code.
 
 *Why in the package at all:* "one of the most valuable parts of this SPM" and
 "absolutely not in the app" (Toni, 2026-07-18). Tools depend only on
-`FoundationModels` + `ToolVocabulary`, never `RuntimeCore` — usable with any model
+`FoundationModels` + `ToolVocabulary`, never `Recorder` — usable with any model
 package, runtime optional.
 
 - **FR-074–079 — Implemented.** The six file tools (`read_file`, `list_folder`,

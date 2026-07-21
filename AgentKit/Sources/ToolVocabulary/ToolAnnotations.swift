@@ -2,7 +2,7 @@ import Foundation
 
 // REQ: agent-loop-implementation.md §6 — effect/idempotency/budget metadata is
 // runtime policy data, not a second tool protocol. This is the only shared
-// language between RuntimeCore and ToolKit; neither imports the other.
+// language between Recorder and ToolKit; neither imports the other.
 
 /// What kind of side effect a tool call can have.
 public enum ToolEffect: String, Sendable, Equatable, Codable {

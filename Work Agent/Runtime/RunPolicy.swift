@@ -4,18 +4,18 @@ import Foundation
 // defaults belong in the app; this is the composable primitive. Increment 4 only
 // needs the attempt ceiling (retry/failover budget) — richer limits (token/cost/
 // time/tool-call) are added when a real run demonstrates the need.
-public struct RunPolicy: Sendable, Equatable {
+struct RunPolicy: Sendable, Equatable {
     /// Total attempts across the primary and any fallback executor before the run
     /// gives up rather than retrying again.
-    public var maximumAttempts: Int
+    var maximumAttempts: Int
 
-    public init(maximumAttempts: Int = 3) {
+    init(maximumAttempts: Int = 3) {
         self.maximumAttempts = maximumAttempts
     }
 
-    public static let `default` = RunPolicy()
+    static let `default` = RunPolicy()
 
-    public func maximumAttempts(_ value: Int) -> RunPolicy {
+    func maximumAttempts(_ value: Int) -> RunPolicy {
         var copy = self
         copy.maximumAttempts = value
         return copy
