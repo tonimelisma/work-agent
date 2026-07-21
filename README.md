@@ -189,8 +189,8 @@ does something, this package uses it rather than re-implementing it.
 
 ## Apps built on this package
 
-Work Agent for macOS and iOS — native agent apps — are built on these
-libraries and serve as their reference implementations.
+None yet, in this repo. This repo is SPM-root — a standalone package, no host app
+in-tree. A native reference app is a planned, separate effort in its own repo.
 
 ## Documentation
 
@@ -203,8 +203,7 @@ libraries and serve as their reference implementations.
 | [Working agreement](CLAUDE.md) | The process: research → roadmap → plans → code → product/engineering records → review |
 
 Implementation plans for the top roadmap items live in [docs/plans/](docs/plans/)
-and are deleted as they're built. App-specific docs are parked in
-[docs/app/APP.md](docs/app/APP.md) until the app moves to its own repo.
+and are deleted as they're built.
 
 ## License
 

@@ -8,12 +8,12 @@ for now. if that's the real value, it's not much." · "MCP support should live
 somewhere else, it shouldn't depend on using our runtime should it?" · earlier:
 "the bigger value prop is the ready tools etc. the durability is not a key issue."
 Binding details are still confirmed per increment; this doc is the end state.
-**Getting the tree to this end state is ROADMAP item 1 (the attachment
-refactor)** — slimmed 2026-07-19 to the app-required half (conductor to app,
-journal to Recorder store with usage capture, the demolition list); the public
-attachment-API polish described in §3 waits in the riffraff for the first
-external consumer. This doc remains the end state; item 1 builds only the part
-the app pays for.
+**The attachment refactor that gets the tree to this end state shipped
+2026-07-20** (session-owning API left the package entirely, then the app itself
+was deleted from this repo the same day — see PRODUCT.md/ENGINEERING.md); the
+public attachment-API polish described in §3 remains parked in the riffraff for
+the first external consumer. This doc remains the end state for what's still
+unbuilt.
 Supported models explicitly include Apple's built-in `SystemLanguageModel` and
 Private Cloud Compute ("Apple Foundation Models support is cheap since it's
 built-in so we'll do that"); third-party local models are never built.

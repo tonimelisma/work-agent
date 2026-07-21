@@ -1,15 +1,17 @@
-# AgentKit — Working Agreement
+# WorkKit — Working Agreement
 
-This repo is a native Swift SPM package: an agent runtime, provider executors, and
-native tool implementations on top of Apple's Foundation Models framework (macOS 27 /
-iOS 27). The Work Agent macOS app still lives here but is moving to its own repo —
-[docs/plans/app-carveout.md](docs/plans/app-carveout.md) — and is not this repo's
-subject. MIT licensed, Toni Melisma.
+This repo is SPM-root: a native Swift SPM package, nothing else — an agent runtime
+substrate, provider executors, and native tool implementations on top of Apple's
+Foundation Models framework (macOS 27 / iOS 27). No host app lives in this repo
+(2026-07-20: the Work Agent app that used to live here was deleted outright, not
+carved out — "just delete it from this repo, and move the current repo to be an
+SPM repo for WorkKit"). A native reference app is a future, separate effort in its
+own repo, consuming this package as a dependency. MIT licensed, Toni Melisma.
 
 **The thesis:** the Swift model-access layer is commoditizing (Apple's protocol,
 vendor packages, community clones); the durable work layer above it is empty. We
-build that layer, model-neutral and local-first, with the Work Agent apps as the
-canonical reference implementations.
+build that layer, model-neutral and local-first, standalone — a package a host
+attaches to, never one that owns the host's session.
 
 ---
 
@@ -129,10 +131,10 @@ IDs are deleted outright and PRODUCT.md tracks the next-free counters. In code, 
 the point of satisfaction:
 
 ```swift
-// REQ: FR-006 — failed provider attempts fail over automatically; the switch is traced.
+// REQ: FR-074 — read_file pages output that exceeds the model-facing budget.
 ```
 
-In tests, the ID goes in the display name. `rg "FR-006"` finds the feature record,
+In tests, the ID goes in the display name. `rg "FR-074"` finds the feature record,
 the code, and the tests — grep is the whole traceability system.
 
 ## Local provider credentials
@@ -145,18 +147,19 @@ recorded provider traffic before committing.
 
 ## Conventions
 
-- Swift 6, strict concurrency, swift-testing. One SPM package (many small products —
-  module = encapsulation, package = versioning); the app targets leave with the
-  carve-out. Dependencies: Apple frameworks only, except ZIPFoundation, SwiftSoup,
-  and (opt-in) the MCP swift-sdk.
-- **Never add UI tests.** Coverage is unit and contract level; acceptance is
-  verified by running things — `swift test`, `xcodebuild build`/`test`, gated
-  live-provider smoke tests, never by driving the app's GUI.
-- **Never manually test the app.** No computer-use, Accessibility, or other
-  GUI-automation tooling against Work Agent (or its built .app) — not to click
-  through a flow, not to eyeball a screen, not to enter credentials on its
-  behalf. If a plan step calls for manual/GUI verification, do the automated
-  parts (build, tests) and name the GUI part as a gap for Toni to run himself.
+- Swift 6, strict concurrency, swift-testing. One SPM package, repo root (many
+  small products — module = encapsulation, package = versioning). Dependencies:
+  Apple frameworks only, except ZIPFoundation, SwiftSoup, and (opt-in) the MCP
+  swift-sdk.
+- **Never add UI tests.** This package ships no UI; coverage is unit and contract
+  level; acceptance is verified by running things — `swift test`,
+  `xcodebuild ... build`/`test` on both platforms, gated live-provider smoke tests.
+- **Never manually test a host app via GUI automation.** If this repo ever carries
+  a reference or example app again, no computer-use, Accessibility, or other
+  GUI-automation tooling against it — not to click through a flow, not to
+  eyeball a screen, not to enter credentials on its behalf. If a plan step calls
+  for manual/GUI verification, do the automated parts (build, tests) and name the
+  GUI part as a gap for Toni to run himself.
 - Code increments: worktree + PR, squash merge, delete branch. Doc-only increments:
   straight to main.
 - No secrets in commits. No telemetry anywhere in the package.

@@ -49,7 +49,9 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 
 **A note on retired references.** Older research docs cite `ADR-NNNN` files and the
 former RUNTIME.md/REQUIREMENTS.md. Those documents were merged in the 2026-07-19
-restructure: decision rationale lives in ENGINEERING.md's "Why it is built this way"
-(app-side: docs/app/APP.md), implemented features with their FR/NFR IDs in
-PRODUCT.md, and future vision in ROADMAP.md. The citations remain as historical
-names; git history holds the originals.
+restructure: decision rationale lives in ENGINEERING.md's "Why it is built this way",
+implemented features with their FR/NFR IDs in PRODUCT.md, and future vision in
+ROADMAP.md. The citations remain as historical names; git history holds the
+originals. (This repo became SPM-root on 2026-07-20 — the app-side docs some older
+research points to, `docs/app/APP.md`, no longer exist; that content was deleted
+along with the app, not relocated.)

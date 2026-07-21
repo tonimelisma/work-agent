@@ -1,17 +1,18 @@
-# AgentKit — The Product That Exists
+# WorkKit — The Product That Exists
 
 **Implemented features only.** Future work lives in [ROADMAP.md](ROADMAP.md); how the
 code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
 here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
 where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
-**Next free: FR-084 · NFR-011.** (App-specific features — chat UI, settings,
-conversation sidebar — are recorded in [../app/APP.md](../app/APP.md) and leave with
-the app.)
+**Next free: FR-084 · NFR-011.**
 
-AgentKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
+WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 67 package tests, green on both platforms. MIT.
+`ToolKitForMac`). 67 package tests, green on both platforms. MIT. This repo is
+SPM-root — there is no app in this tree; a native reference app is a separate,
+later effort in its own repo (2026-07-20: "just delete it from this repo, and
+move the current repo to be an SPM repo for WorkKit").
 
 ---
 
@@ -23,12 +24,11 @@ ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
   `LanguageModel`/`LanguageModelExecutor` protocol rather than a bespoke one,
   because the Swift ecosystem is standardizing on it (vendor packages, community
   clones) and a parallel type system would fork that ecosystem. The honest caveat
-  recorded with the decision: for the app alone a custom loop would also have
+  recorded with the decision: for a single app alone a custom loop would also have
   served; Apple's protocol won because the *package's* market is Foundation Models
   developers. If that bet dies, this choice has a falsifier and revisiting is kept
   cheap (executors are ours, the loop strategy is swappable).
 - **NFR-009 — Implemented.** macOS 27 minimum (the provider protocol is OS 27 API).
-  Toni accepted: "we'll have three layers."
 - **NFR-010 — Implemented.** The package builds and its suite passes on iOS 27 and
   macOS 27 both.
 - **The FR-001 / FR-060 tension is the design, on purpose.** FR-001 says the
@@ -55,38 +55,37 @@ ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
   "we're not trying to neuter them" (FR-060's principle; full fidelity work
   continues on the roadmap).
 
-## Run mechanics (durable runs — repositioned 2026-07-19, migration executed 2026-07-20)
+## The Recorder: durable-run substrate, attach-only
 
 **The attachment pivot, recorded:** after pressure-testing durability's value
 ("can you really explain the value of durability here?… It's more your hobby
 horse than mine"; "bypassing the core FM API… is horrible"), the public-API
-direction changed — see plans/runtime-api.md. What's below remains a true record
-of what is *built and working in the app today*; its future was redirection, not
-deletion: the journal/checkpoint/archive internals now live inside the Recorder
-(where their daily value is traces, not crash insurance), `TaskCoordinator` and
-`RunPolicy` have left the public API and are now reference-app code
-(`Work Agent/Runtime/`), and the provider-state strip is `TranscriptArchive`'s
-small utility. FR-006/072/073 stay true as *app* features delivered by this code.
+direction changed — see plans/runtime-api.md. The Recorder never owns a session
+or a control loop; it gives a host the durable primitives to build one.
 
-- **FR-006 — Implemented.** A run whose provider fails mid-flight preserves its
-  state and **automatically** resumes on a designated fallback, the switch recorded
-  in the trace, the failed provider's opaque metadata stripped on replay. *Why
-  automatic:* "task failover cool"; automatic-not-manual was Toni's explicit call
-  (2026-07-19). No framework in any ecosystem ships this. Value re-analysis
-  verdict (2026-07-19): kept as built and working, but the MVP would not build
-  it today — do not expand it.
-- **FR-072 / FR-073 — Implemented** (app-facing behavior, package-supplied
-  mechanics). A run in flight when the process exits pauses at its next checkpoint
-  and offers resume on relaunch; conversations survive restart. *Why
-  pause-and-offer rather than auto-resume:* Toni's call at planning. The
-  machinery — append-only fsync'd journal, atomic checkpoint store, transcript
-  archive with versioned replay — is designed suspension-safe because the planned
-  iOS reference app lives under forced suspension.
+- **Implemented.** An append-only run journal (`RunJournal`/`FileRunJournal`,
+  fsync'd jsonl), an atomic checkpoint store (`CheckpointStore`/`FileCheckpointStore`),
+  a versioned `TranscriptArchive` with `replay(to:)` (strips a departing provider's
+  opaque metadata so a conversation can continue on a different provider), and
+  `RecorderStore`, a minimal read/append façade over the journal for a host's own
+  cost-display or history UI. None of these constructs a `LanguageModelSession` or
+  runs a loop — a host (an app, a CLI, a server) owns that and calls into the
+  Recorder for durability.
 - Tool instrumentation without a second tool type: any plain `FoundationModels.Tool`
   gains durable invocation identity and a journal trail through
-  `InstrumentedTool<Base>`. *Why no AgentKit tool protocol:* Apple's `Tool` has no
+  `InstrumentedTool<Base>` (package-internal — the public wrapper API waits for a
+  real external consumer). *Why no WorkKit tool protocol:* Apple's `Tool` has no
   metadata slot but sessions take existentials, so wrapping beats forking the
   ecosystem's tool noun — effects and idempotency travel as `ToolAnnotations` data.
+
+**Dropped, honestly:** FR-006 (automatic cross-provider failover), FR-072, and
+FR-073 (pause-on-quit / resume-on-relaunch) were previously recorded here as
+implemented — they described the full behavior of `TaskCoordinator`, an
+orchestrator that lived in the (now-deleted) Work Agent app, not in this package.
+The substrate it was built on (journal, checkpoint store, archive replay) remains
+and is documented above; the orchestration loop that made those specific EARS
+statements true does not exist in this repo. Per the ID discipline, dropped IDs
+are deleted outright rather than left claiming something no longer built here.
 
 ## ToolKit: native tools as package products
 
@@ -107,10 +106,10 @@ package, runtime optional.
 - **FR-083 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
   — provider-hosted search plus a neutral backend was Toni's call; Brave chosen as
   the conventional-SERP fallback). Tested against stubbed responses; the Brave key
-  arrived 2026-07-19 — live verification is ROADMAP item 3.
+  arrived 2026-07-19 — live verification is ROADMAP item 1.
 - **FR-080 / FR-081 — Implemented in package, not yet surfaced.** `ask_user` and
-  `update_plan`, validated against presenter/recorder doubles; the app UI that
-  would show them doesn't exist yet.
+  `update_plan`, validated against presenter/recorder doubles; no host currently
+  wires them to a UI.
 - Umbrella product `ToolKitForMac` re-exports the platform-true set. *Why umbrellas
   over platform silos:* one import per platform for developers, shared domain
   targets underneath because the overlap (parsers, paging, schemas) is the
@@ -128,13 +127,12 @@ package, runtime optional.
 ## Implemented requirements — verbatim, numbered, traced
 
 The testable statements, exactly as minted (NFR-005: every requirement traceable to
-code and tests by ID — `rg <ID>` finds all three). Trace column verified 2026-07-19
+code and tests by ID — `rg <ID>` finds all three). Trace column verified 2026-07-20
 by grep; a ✗ is an honest gap, not an oversight.
 
 | ID | Statement | Code | Tests |
 |---|---|:-:|:-:|
 | FR-001 | The system shall perform all model inference through a provider abstraction, such that no feature depends on a specific model vendor. | ✓ | ✗ — no test carries the ID; the increment-6 cold-provider test is its proof |
-| FR-006 | If the active provider becomes unavailable mid-run, then the system shall preserve run state and automatically resume the run on a designated fallback provider, recording the switch in the trace. | ✓ | ✓ |
 | FR-074 | The system shall provide a `read_file` tool that reads text, image, PDF, and docx content from a path, paging output that exceeds the model-facing budget. | ✓ | ✓ |
 | FR-075 | The system shall provide a `list_folder` tool that lists a directory's entries, optionally recursive to a bounded depth. | ✓ | ✓ |
 | FR-076 | The system shall provide a `find_files` tool that matches file paths by glob pattern under a root. | ✓ | ✓ |
@@ -148,14 +146,11 @@ by grep; a ✗ is an honest gap, not an oversight.
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
 | NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✗ — proven by the dual-platform CI build, no single test names it |
 
-App-side implemented requirements (FR-050–073 range, NFR-002/003/006–009) are
-tabled the same way in [../app/APP.md](../app/APP.md) and leave with the app.
-
 ## Known gaps, named
 
 Recorded honestly rather than silently skipped: no gated on-device
-`SystemLanguageModel` test yet (no eligible-device cycle); ToolKit calls aren't yet
-wrapped in `InstrumentedTool` at the app integration point (run id timing); the
-interactive send→quit→resume UI path was never human-verified; `web_search` never
-ran live (key now supplied; verification queued). Each is a roadmap item, not a
+`SystemLanguageModel` test yet (no eligible-device cycle); `web_search` never ran
+live (key now supplied; verification queued); no host in this repo wires
+`InstrumentedTool`, `ask_user`, or `update_plan` to anything — that's a consuming
+app's job, and no such app lives here anymore. Each is a roadmap item, not a
 footnote.

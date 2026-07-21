@@ -65,9 +65,11 @@ adjectives — the reader who has hit these problems doesn't need them.
    `Transcript`/`Tool`/`@Generable` stay Apple's; `respond()` the only front
    door — the package adds no entry point at all (the 2026-07-19 attachment
    pivot), not a second session.
-7. **The apps** — two sentences and screenshots: Work Agent for macOS and iOS
-   are built entirely on these libraries and exercise every product above.
-   Evidence, zero adjectives.
+7. **The apps** — two sentences and screenshots per reference app, once one
+   exists in its own repo, built entirely on these libraries and exercising
+   every product above. Evidence, zero adjectives. (No reference app exists as
+   of 2026-07-20 — the app that used to live in this repo was deleted, not
+   carried forward; this section is written when a new one ships.)
 8. **What this package does not do** — not a model SDK, not a second session
    API, no RAG/memory, no graph DSL, no cloud account, no telemetry.
 9. **Status, docs, admin** — stability promise, DocC + Examples, contributing
