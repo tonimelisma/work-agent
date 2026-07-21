@@ -171,7 +171,11 @@ Works with any `LanguageModel`: Apple's on-device model, Private Cloud
 Compute, [ClaudeForFoundationModels](https://github.com/anthropics/ClaudeForFoundationModels),
 Google's Gemini package, or the executors above. Verified to date through real
 `LanguageModelSession` tool cycles: DeepSeek, Google, and Anthropic, including
-provider-state replay and a live mid-run provider switch (2026-07-18).
+provider-state replay and a live mid-run provider switch (2026-07-18); Alibaba,
+xAI, and Apple's own on-device `SystemLanguageModel` also verified live
+(2026-07-20). See
+[docs/research/provider-chat-endpoints.md](docs/research/provider-chat-endpoints.md)
+for the full eleven-provider matrix, passes and failures both.
 
 ## Relationship to Foundation Models
 

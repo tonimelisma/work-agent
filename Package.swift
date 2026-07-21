@@ -70,5 +70,12 @@ let package = Package(
             name: "ToolKitInteractionTests",
             dependencies: ["ToolKitInteraction"]
         ),
+        // Gated live-provider smoke tests hitting real endpoints — see
+        // Tests/ExecutorsLiveTests/LiveTestSupport.swift for the run command and gating
+        // pattern. `swift test` alone runs zero of these; they self-skip without keys.
+        .testTarget(
+            name: "ExecutorsLiveTests",
+            dependencies: ["Executors", "ToolKitFiles", "Recorder"]
+        ),
     ]
 )

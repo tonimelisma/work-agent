@@ -9,7 +9,10 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 94 package tests, green on both platforms. MIT. This repo is
+`ToolKitForMac`). 110 package tests (98 run unconditionally — the on-device
+Apple model among them where hardware allows; 12 are `.env`-key-gated live
+provider/search smokes that self-skip without keys), green on both platforms.
+MIT. This repo is
 SPM-root — there is no app in this tree; a native reference app is a separate,
 later effort in its own repo (2026-07-20: "just delete it from this repo, and
 move the current repo to be an SPM repo for WorkKit").
@@ -36,6 +39,13 @@ move the current repo to be an SPM repo for WorkKit").
   dumbed down to the common denominator. Both hold: any provider works, and each
   provider lights up everything it can do. What we never do is delete a capability
   because a competitor lacks it.
+- **Apple's on-device `SystemLanguageModel`, live-verified 2026-07-20** through
+  this same protocol — `AppleOnDeviceLiveTests`, gated on device availability
+  rather than a key: a session with `SystemLanguageModel.default` and an
+  instrumented `read_file` tool completed a real request → tool call → durable
+  journal entries → final response cycle on this hardware, proving the "any
+  `LanguageModel`, including Apple's own" claim rather than assuming it from the
+  protocol conformance alone.
 
 ## Executors: ten cloud providers behind the protocol
 
@@ -57,6 +67,24 @@ move the current repo to be an SPM repo for WorkKit").
   same way (fixture-tested, not yet verified live — triggering a real redacted
   block isn't deterministic, so this waits on real usage rather than a synthetic
   live probe).
+- **Live-verified, full tool-cycle, 2026-07-20** (`ExecutorsLiveTests`): deepseek,
+  anthropic, google, alibaba, and xai (xai's first-ever live probe — endpoint
+  taken from a fresh models.dev fetch, confirmed live) complete a real request →
+  tool call → tool result → final response cycle end to end. moonshotai, openai,
+  minimax, meta (first-ever probe), and zai (GLM) connect with valid auth but fail
+  at the tool-cycle step for provider-specific reasons, and thinkingmachines
+  (first-ever probe) has no model currently deployed on this account — named
+  exactly in
+  [research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md),
+  not glossed over. *Why record the failures instead of only the passes:* "a
+  failing provider stays failed in the results table with its exact symptom" —
+  fixing them is future roadmap work, not claimed here.
+- **GLM (Zhipu) JWT auth built, not yet functional.** `OpenAICompatibleExecutor
+  .Configuration.AuthStyle.zhipuJWT` signs the HS256 JWT Zhipu's documented
+  community shape requires (id.secret key, HMAC-SHA256 via CryptoKit), verified
+  byte-exact against a fixed clock offline. The provider still 401s both hosts
+  live with a well-formed token as of 2026-07-20 — the auth *style* is no longer
+  the blocker; what Zhipu actually wants beyond it is unresolved.
 
 ## The Recorder: durable-run substrate, attach-only
 
@@ -106,10 +134,12 @@ package, runtime optional.
 - **FR-082 — Implemented.** `fetch_url`: HTML→Markdown, paged, SSRF-guarded
   (private/link-local/metadata hosts denied post-resolution). *Why paged markdown,
   no extraction model:* Toni chose it — zero per-fetch model cost.
-- **FR-083 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
-  — provider-hosted search plus a neutral backend was Toni's call; Brave chosen as
-  the conventional-SERP fallback). Tested against stubbed responses; the Brave key
-  arrived 2026-07-19 — live verification is ROADMAP item 1.
+- **FR-083 — Implemented, live-verified 2026-07-20.** `web_search`, Brave-backed
+  ("Both" — provider-hosted search plus a neutral backend was Toni's call; Brave
+  chosen as the conventional-SERP fallback). Tested against stubbed responses for
+  the offline suite; a real query against the live Brave Search API
+  (`ToolKitWebTests/WebSearchLiveTests`, gated on `BRAVE_API_KEY`) returns titled,
+  linked results.
 - **FR-080 / FR-081 — Implemented in package, not yet surfaced.** `ask_user` and
   `update_plan`, validated against presenter/recorder doubles; no host currently
   wires them to a UI.
@@ -145,15 +175,17 @@ by grep; a ✗ is an honest gap, not an oversight.
 | FR-080 | The system shall provide an `ask_user` tool that suspends the run to ask the user 1–4 questions with 2–4 options each plus free text, resuming on answer. | ✓ | ✓ |
 | FR-081 | The system shall provide an `update_plan` tool that records an ordered list of steps with exactly one in progress. | ✓ | ✓ |
 | FR-082 | The system shall provide a `fetch_url` tool that fetches a web page and returns it as paged Markdown, with no extraction model call. | ✓ | ✓ |
-| FR-083 | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | ✓ | ✓ stubbed — never live |
+| FR-083 | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | ✓ | ✓ stubbed + live (2026-07-20) |
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
-| NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✗ — proven by the dual-platform CI build, no single test names it |
+| NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✓ `AppleOnDeviceLiveTests` (2026-07-20, on-device leg); dual-platform CI build proves the rest |
 
 ## Known gaps, named
 
-Recorded honestly rather than silently skipped: no gated on-device
-`SystemLanguageModel` test yet (no eligible-device cycle); `web_search` never ran
-live (key now supplied; verification queued); no host in this repo wires
-`InstrumentedTool`, `ask_user`, or `update_plan` to anything — that's a consuming
-app's job, and no such app lives here anymore. Each is a roadmap item, not a
-footnote.
+Recorded honestly rather than silently skipped: six of eleven cloud providers
+(moonshotai, openai, minimax, meta, zai/GLM, thinkingmachines) fail a live
+tool-cycle for provider-specific reasons named in
+[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md) —
+fixing them is future roadmap work, not this increment's; no host in this repo
+wires `InstrumentedTool`, `ask_user`, or `update_plan` to anything — that's a
+consuming app's job, and no such app lives here anymore. Each is a roadmap item,
+not a footnote.

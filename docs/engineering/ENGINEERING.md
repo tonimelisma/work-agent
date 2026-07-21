@@ -63,11 +63,17 @@ Sources/
   ToolKitForMac/                            umbrella: re-exports the three above
 Tests/
   RecorderTests/                            21 tests: durability, semantics
-  ExecutorsTests/                           23 tests: SSE parsing, both wire formats, stream guards,
-                                             redacted-thinking round-trip
+  ExecutorsTests/                           27 tests: SSE parsing, both wire formats, stream
+                                             guards, redacted-thinking round-trip, GLM JWT
+                                             construction (fixed clock)
   ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
-  ToolKitWebTests/                          16 tests: Markdown rendering, SSRF, redirects, search
+  ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
+                                             search (16 offline + 1 live, BRAVE_API_KEY-gated)
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
+  ExecutorsLiveTests/                       12 tests: real providers + Apple on-device,
+                                             through this package's own executors —
+                                             11 key-gated (skip without `.env`), 1
+                                             device-gated (Apple on-device, runs where eligible)
 docs/                                       specs
 ```
 
@@ -153,7 +159,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 94 tests: transcript
+The package's own suite (`swift test` from the repo root) is 110 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -166,22 +172,45 @@ an in-memory `.docx` fixture built with ZIPFoundation rather than a committed
 binary), `fetch_url`'s Markdown rendering, redirect-walking, streaming-cap, and
 SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), the executor
 stream guards (non-SSE Content-Type, zero-event streams, error-body capture),
-Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`, and
-its `redacted_thinking` round-trip (parser, bridge accumulation, encoder
-ordering) (`ExecutorsTests`), and `ask_user`/`update_plan` validation against fake
+Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`, its
+`redacted_thinking` round-trip (parser, bridge accumulation, encoder ordering),
+and the GLM JWT construction against a fixed clock (`ExecutorsTests`), and
+`ask_user`/`update_plan` validation against fake
 presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
-**Gap, named honestly.** Gated live-provider smoke tests (`LiveSmokeTests`,
-`TEST_RUNNER_<VAR>`-gated, hitting real provider APIs through this package's
-production executors) previously lived in the Work Agent app's test target and did
-not migrate — they tested the app's integration of the executors, not standalone
-package API. This package currently has **no live-provider verification of its
-own**; building that gated infrastructure directly in this package's `Tests/` is
-ROADMAP item 1. `TaskCoordinator`'s success/failover/resume test suite
-(`ConductorTests`) is gone the same way — it tested app-owned orchestration code
-that no longer exists in any repo this project controls.
+**Live-provider verification, closed 2026-07-20.** A dedicated
+`ExecutorsLiveTests` target (`Executors` + `ToolKitFiles` + `Recorder`) hits real
+provider APIs through this package's own production executors — the previous
+`LiveSmokeTests`/`ConductorTests` lived in the now-deleted Work Agent app's test
+target and tested the app's integration, not standalone package API, and did not
+migrate. Each test is gated per-provider with swift-testing's
+`.enabled(if: ProcessInfo.processInfo.environment["<VAR>_API_KEY"] != nil)`, so
+plain `swift test` runs zero of them; source `.env` first to run them live:
+
+```bash
+set -a; source .env; set +a
+swift test --filter ExecutorsLiveTests
+```
+
+All eleven providers share one harness (`LiveTestSupport.swift`): a real
+`LanguageModelSession` with a deterministic `SentinelTool`, asserting the tool was
+actually called and the final response echoes its output — proving the full
+two-request cycle, including provider-owned state replayed on the second request,
+not just a first token. `web_search` (`ToolKitWebTests/WebSearchLiveTests`) is
+gated the same way on `BRAVE_API_KEY`. Results, including which providers pass and
+which fail and why, are in research/provider-chat-endpoints.md — this increment
+does not hide a failing provider by only shipping the tests for the ones that pass.
+
+Apple's on-device model (`AppleOnDeviceLiveTests`) is gated differently: on
+`SystemLanguageModel.default.availability` rather than an env var, since on-device
+inference needs no key — a device with no eligible hardware or disabled Apple
+Intelligence skips with the reason named, but on an eligible Mac it runs for real
+on every plain `swift test`, exercising `read_file` wrapped in `InstrumentedTool`
+through Apple's own model. Observed once transiently unavailable under host
+memory pressure (`CriticalMemoryPressure`) and passing on immediate retry — a
+real-hardware condition, not a code defect, named here rather than hidden.
 
 Tests are necessary and not sufficient. A green suite over a feature nobody
 exercises live is how agents convince themselves of things that aren't true — named
@@ -279,6 +308,17 @@ drift detector. Anthropic's `redacted_thinking` blocks round-trip the same way
 signed thinking blocks do: carried as reasoning-entry metadata (an opaque array,
 JSON-encoded, since a response can carry several), stripped by the existing
 provider-prefix filter on a cross-provider replay with no archive changes.
+
+One of those presets is auth, not just base URL and model: GLM/Zhipu rejects its
+`id.secret` key as a raw bearer token and wants an HS256 JWT instead (see
+research/provider-chat-endpoints.md "The Zhipu/GLM wrinkle"). Rather than a
+GLM-specific executor, `OpenAICompatibleExecutor.Configuration.AuthStyle`
+(`.bearer` / `.zhipuJWT`) is one more `Configuration` value — the same "adding a
+provider is data, not a type" shape the rest of the ten follow. The JWT
+construction (`ZhipuJWT.token`) is pure given an injected clock, so it's tested
+against an exact expected token string offline; live, both of GLM's documented
+hosts still 401 a well-formed token as of 2026-07-20 (Testing, below) — the auth
+*style* is confirmed correct, the provider's actual requirement beyond it is not.
 
 ### One package, many small products
 

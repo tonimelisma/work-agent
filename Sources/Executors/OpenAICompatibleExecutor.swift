@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import FoundationModels
 import ToolVocabulary
@@ -13,25 +14,41 @@ public struct OpenAICompatibleModel: LanguageModel {
     public let capabilities = LanguageModelCapabilities([.reasoning, .toolCalling])
     public let executorConfiguration: OpenAICompatibleExecutor.Configuration
 
-    public init(providerID: String, model: String, endpoint: URL, apiKey: String) {
+    public init(
+        providerID: String, model: String, endpoint: URL, apiKey: String,
+        authStyle: OpenAICompatibleExecutor.Configuration.AuthStyle = .bearer
+    ) {
         executorConfiguration = .init(
-            providerID: providerID, model: model, endpoint: endpoint, apiKey: apiKey
+            providerID: providerID, model: model, endpoint: endpoint, apiKey: apiKey, authStyle: authStyle
         )
     }
 }
 
 public struct OpenAICompatibleExecutor: LanguageModelExecutor {
     public struct Configuration: Hashable, Sendable {
+        // REQ: GLM (Zhipu) rejects a raw bearer token — see
+        // research/provider-chat-endpoints.md "The Zhipu/GLM wrinkle" — and requires an
+        // HS256 JWT signed from the `id.secret`-shaped API key instead. `.bearer` covers
+        // every other curated provider unchanged.
+        public enum AuthStyle: Hashable, Sendable {
+            case bearer
+            case zhipuJWT
+        }
+
         public var providerID: String
         public var model: String
         public var endpoint: URL
         public var apiKey: String
+        public var authStyle: AuthStyle
 
-        public init(providerID: String, model: String, endpoint: URL, apiKey: String) {
+        public init(
+            providerID: String, model: String, endpoint: URL, apiKey: String, authStyle: AuthStyle = .bearer
+        ) {
             self.providerID = providerID
             self.model = model
             self.endpoint = endpoint
             self.apiKey = apiKey
+            self.authStyle = authStyle
         }
     }
 
@@ -49,7 +66,13 @@ public struct OpenAICompatibleExecutor: LanguageModelExecutor {
     ) async throws {
         var urlRequest = URLRequest(url: configuration.endpoint)
         urlRequest.httpMethod = "POST"
-        urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
+        switch configuration.authStyle {
+        case .bearer:
+            urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
+        case .zhipuJWT:
+            let token = try ZhipuJWT.token(apiKey: configuration.apiKey)
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         var body: [String: Any] = [
@@ -90,5 +113,54 @@ public struct OpenAICompatibleExecutor: LanguageModelExecutor {
                 }
             }
         )
+    }
+}
+
+enum ZhipuAuthError: LocalizedError, Equatable, Sendable {
+    case malformedAPIKey
+
+    var errorDescription: String? {
+        switch self {
+        case .malformedAPIKey: "Zhipu API key is not in the expected \"id.secret\" format"
+        }
+    }
+}
+
+/// Zhipu/GLM rejects the raw `ZHIPU_API_KEY` as a bearer token at both `open.bigmodel.cn`
+/// and `api.z.ai` (research/provider-chat-endpoints.md "The Zhipu/GLM wrinkle"); it wants
+/// an HS256 JWT signed from the key's `id` half using the `secret` half. `now` is an
+/// injected parameter (not `Date()` inline) so the exact token string is reproducible
+/// under test.
+enum ZhipuJWT {
+    static func token(apiKey: String, now: Date = Date()) throws -> String {
+        let parts = apiKey.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else {
+            throw ZhipuAuthError.malformedAPIKey
+        }
+        let id = String(parts[0])
+        let secret = String(parts[1])
+
+        let nowMilliseconds = Int(now.timeIntervalSince1970 * 1_000)
+        let header: [String: Any] = ["alg": "HS256", "sign_type": "SIGN"]
+        let payload: [String: Any] = [
+            "api_key": id,
+            "exp": nowMilliseconds + 3_600_000,
+            "timestamp": nowMilliseconds,
+        ]
+
+        let headerData = try JSONSerialization.data(withJSONObject: header, options: [.sortedKeys])
+        let payloadData = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+        let signingInput = "\(base64URL(headerData)).\(base64URL(payloadData))"
+
+        let key = SymmetricKey(data: Data(secret.utf8))
+        let signature = HMAC<SHA256>.authenticationCode(for: Data(signingInput.utf8), using: key)
+        return "\(signingInput).\(base64URL(Data(signature)))"
+    }
+
+    private static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
