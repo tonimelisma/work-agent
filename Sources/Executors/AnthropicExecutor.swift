@@ -45,16 +45,61 @@ public struct AnthropicExecutor: LanguageModelExecutor {
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let body = try AnthropicExecutor.requestBody(model: configuration.model, request: request)
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+        let httpResponse = try await ExecutorRequestEncoding.validate(response: response, bytes: bytes, providerID: "anthropic")
+        try await ExecutorRequestEncoding.assertEventStream(response: httpResponse, bytes: bytes, providerID: "anthropic")
+
+        var parser = AnthropicStreamParser()
+        var bridge = ExecutorChannelBridge(requestID: request.id, providerID: "anthropic")
+        try await ExecutorRequestEncoding.consumeEventStream(
+            bytes: bytes, providerID: "anthropic",
+            parseLine: { line, lineNumber in try parser.consume(line, lineNumber: lineNumber) },
+            onEvent: { event in
+                for channelEvent in bridge.channelEvents(for: event) {
+                    await channel.send(channelEvent)
+                }
+            }
+        )
+    }
+
+    /// Maps Apple's `ContextOptions.ReasoningLevel` (verified against the OS 27
+    /// swiftinterface: `.light`/`.moderate`/`.deep`/`.custom(String)` — not the
+    /// low/medium/high names this mapping was first guessed at) to Anthropic's
+    /// `output_config.effort` string. `.custom` passes its value straight through;
+    /// an unrecognized future case falls back to the nearest named level.
+    static func effort(for level: ContextOptions.ReasoningLevel) -> String {
+        switch level {
+        case .light: "low"
+        case .moderate: "medium"
+        case .deep: "high"
+        case let .custom(value): value
+        @unknown default: "medium"
+        }
+    }
+
+    /// Pure request-body construction, pulled out of `respond` so the
+    /// `output_config`/`reasoningLevel` mapping is testable without a network stub.
+    static func requestBody(
+        model: String, request: LanguageModelExecutorGenerationRequest
+    ) throws -> [String: Any] {
         let encoded = try ExecutorRequestEncoding.anthropicMessages(from: request.transcript)
         var body: [String: Any] = [
-            "model": configuration.model,
+            "model": model,
             "max_tokens": request.generationOptions.maximumResponseTokens ?? 4_096,
             "messages": encoded.messages,
             "tools": try ExecutorRequestEncoding.anthropicTools(request.enabledToolDefinitions),
             "thinking": ["type": "adaptive"],
-            "output_config": ["effort": "max"],
             "stream": true,
         ]
+        // `output_config.effort` is omitted entirely (provider default) unless the
+        // caller asked for a specific level — every request no longer pays for max
+        // effort unconditionally.
+        if let level = request.contextOptions.reasoningLevel {
+            body["output_config"] = ["effort": effort(for: level)]
+        }
         if !encoded.system.isEmpty { body["system"] = encoded.system }
         if request.generationOptions.toolCallingMode == .required {
             body["tool_choice"] = ["type": "any"]
@@ -63,36 +108,21 @@ public struct AnthropicExecutor: LanguageModelExecutor {
         } else {
             body["tool_choice"] = ["type": "auto"]
         }
-        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-        try ExecutorRequestEncoding.validate(response: response, providerID: "anthropic")
-
-        var parser = AnthropicStreamParser()
-        var bridge = ExecutorChannelBridge(requestID: request.id, providerID: "anthropic")
-        var lineNumber = 0
-        for try await line in bytes.lines {
-            lineNumber += 1
-            for event in try parser.consume(line, lineNumber: lineNumber) {
-                for channelEvent in bridge.channelEvents(for: event) {
-                    await channel.send(channelEvent)
-                }
-            }
-        }
+        return body
     }
 }
 
-public enum LiveExecutorError: LocalizedError, Sendable {
+public enum LiveExecutorError: LocalizedError, Equatable, Sendable {
     case invalidHTTPResponse(provider: String)
-    case httpFailure(provider: String, status: Int)
+    case httpFailure(provider: String, status: Int, message: String)
     case unsupportedTranscriptSegment(entryID: String)
 
     public var errorDescription: String? {
         switch self {
         case let .invalidHTTPResponse(provider):
             "\(provider) returned a non-HTTP response"
-        case let .httpFailure(provider, status):
-            "\(provider) returned HTTP \(status)"
+        case let .httpFailure(provider, status, message):
+            "\(provider) returned HTTP \(status): \(message)"
         case let .unsupportedTranscriptSegment(entryID):
             "Cannot translate non-text transcript segment in entry \(entryID)"
         }
@@ -105,13 +135,65 @@ enum ExecutorRequestEncoding {
         var messages: [[String: Any]]
     }
 
-    static func validate(response: URLResponse, providerID: String) throws {
+    /// On a non-2xx response, drains up to 16 KB of the body so the provider's own
+    /// error text (rate limit reason, validation message, etc.) survives into the
+    /// error description instead of being discarded along with the response.
+    @discardableResult
+    static func validate(
+        response: URLResponse, bytes: URLSession.AsyncBytes, providerID: String
+    ) async throws -> HTTPURLResponse {
         guard let response = response as? HTTPURLResponse else {
             throw LiveExecutorError.invalidHTTPResponse(provider: providerID)
         }
         guard 200 ..< 300 ~= response.statusCode else {
-            throw LiveExecutorError.httpFailure(provider: providerID, status: response.statusCode)
+            let prefix = try await drainPrefix(of: bytes, maximumBytes: 16_384)
+            throw LiveExecutorError.httpFailure(provider: providerID, status: response.statusCode, message: prefix)
         }
+        return response
+    }
+
+    /// A 200 with a non-SSE body (a provider's plain-JSON error page, say) must not
+    /// read as a silent empty reply: check Content-Type first so the diagnostic names
+    /// what actually came back, draining a bounded prefix for the error message.
+    static func assertEventStream(
+        response: HTTPURLResponse, bytes: URLSession.AsyncBytes, providerID: String
+    ) async throws {
+        let contentType = response.value(forHTTPHeaderField: "Content-Type") ?? ""
+        guard contentType.contains("text/event-stream") else {
+            let prefix = try await drainPrefix(of: bytes, maximumBytes: 16_384)
+            throw ProviderStreamError.event(provider: providerID, type: "non_sse_response", message: prefix)
+        }
+    }
+
+    /// Belt-and-braces to `assertEventStream`: a correctly-labeled SSE response that
+    /// still produces zero events (an empty body, or a stream of blank keep-alives)
+    /// must not read as a silent empty reply either.
+    static func consumeEventStream(
+        bytes: URLSession.AsyncBytes,
+        providerID: String,
+        parseLine: (String, Int) throws -> [ExecutorEvent],
+        onEvent: (ExecutorEvent) async -> Void
+    ) async throws {
+        var lineNumber = 0
+        var producedAnyEvent = false
+        for try await line in bytes.lines {
+            lineNumber += 1
+            let events = try parseLine(line, lineNumber)
+            if !events.isEmpty { producedAnyEvent = true }
+            for event in events { await onEvent(event) }
+        }
+        guard producedAnyEvent else {
+            throw ProviderStreamError.event(provider: providerID, type: "non_sse_response", message: "empty stream")
+        }
+    }
+
+    private static func drainPrefix(of bytes: URLSession.AsyncBytes, maximumBytes: Int) async throws -> String {
+        var data = Data()
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count >= maximumBytes { break }
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 
     static func openAITools(_ definitions: [Transcript.ToolDefinition]) throws -> [[String: Any]] {

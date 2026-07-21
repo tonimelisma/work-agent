@@ -36,6 +36,9 @@ public actor FileCheckpointStore: CheckpointStore {
         return try decoder.decode(RunCheckpoint.self, from: data)
     }
 
+    // A resume list must not be blocked by one bad checkpoint: silently skipping a
+    // corrupt or unreadable file (rather than throwing and losing every other run's
+    // resumability) is deliberate, not an oversight.
     public func loadAll() async throws -> [RunCheckpoint] {
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil

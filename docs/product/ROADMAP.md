@@ -34,44 +34,15 @@ code (JWT auth; "the second best open source model").
 
 ---
 
-## 1. Review errata (2026-07-20 full-repo code review)
+## 1. Anthropic `redacted_thinking` blocks dropped (2026-07-20 review, unresolved)
 
-**Ready plan: [plans/review-errata-fixes.md](../plans/review-errata-fixes.md).**
-Findings from the post-deletion review of the whole package — all verified
-against the tree, ranked; fold into the next code increment or take as one:
-
-1. **`fetch_url` SSRF via redirect** (`Sources/ToolKitWeb/FetchURLTool.swift`):
-   the public-host check runs only on the *original* host, and URLSession
-   follows redirects before the post-hoc cross-host check — a public URL that
-   302s to an internal/metadata address gets fetched (request fired, body
-   downloaded) before being discarded. Fix: a redirect delegate
-   (`willPerformHTTPRedirection`) that blocks or re-validates every hop.
-2. **Journal torn-tail is permanent** (`Sources/Recorder/RunJournal.swift`): a
-   crash mid-append leaves a partial final line; `events(for:)` then throws
-   `corruptEntry` forever — the crash-survival mechanism fails exactly at a
-   crash. Tolerate a trailing partial line; only mid-file corruption throws.
-3. **`InstrumentedTool` swallows its own guarantee**
-   (`Sources/Recorder/InstrumentedTool.swift`): `try?` on the `toolRegistered`
-   append means a journaling failure silently degrades registered-before-execute
-   to execute-unrecorded — the exact case the guard exists for.
-4. **Anthropic `redacted_thinking` dropped**
-   (`Sources/Executors/StreamParsing.swift`): the parser ignores those blocks;
-   Anthropic requires thinking blocks replayed in tool loops, so a conversation
-   that triggers one breaks on its next request.
-5. **Anthropic effort hard-coded to max**
-   (`Sources/Executors/AnthropicExecutor.swift`): `thinking: adaptive` +
-   `output_config.effort: max` on every request, ignoring
-   `ContextOptions.ReasoningLevel` — maximum cost and latency unconditionally.
-6. **`fetch_url` downloads before the size check**: the 5 MB cap is enforced
-   after the full body is in memory; stream and cut instead.
-7. **A 200 non-SSE body yields a silent empty reply** (both executors): a
-   provider error JSON without `data:` lines completes with zero events —
-   detect via Content-Type or absence of any event.
-8. Smaller: HTTP error bodies discarded (status-only errors); DNS-rebinding
-   TOCTOU between the resolve-check and the fetch (documented-class
-   limitation, note it in the tool description); `CheckpointStore.loadAll`
-   silently drops corrupt checkpoints; blocking `getaddrinfo` on a cooperative
-   thread.
+**`Sources/Executors/StreamParsing.swift`: the parser ignores `redacted_thinking`
+blocks; Anthropic requires thinking blocks replayed in tool loops, so a
+conversation that triggers one breaks on its next request.** Carried over from
+the 2026-07-20 full-repo review's errata — the other 8 ranked findings from that
+same review were fixed in one increment (see PRODUCT.md/ENGINEERING.md for what
+shipped), but this one wasn't in that increment's plan and needs its own before
+it's true that Anthropic's full reasoning fidelity round-trips correctly.
 
 ## 2. Verify the core, close the gaps
 
@@ -131,7 +102,7 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **Recorder completion**: output budgets + spill-to-store, the `read_tool_output` history tool, compaction-made-safe-by-recall | Real agent use hitting the context window (per-tool paging in `read_file`/`fetch_url` carries the package until then) |
 | **Replay + evals**: recordings replayed against other models/prompts, trajectory diffing, recorded-case CI suites | We need regression coverage when swapping models — or a developer asks |
 | **Provider fidelity tiers**: neutral prompt-caching API first, then hosted-search/thinking-budget neutral APIs, direct batch/file-store clients | Real usage data shows caching pays; a real feature needs the rest |
-| **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; item 1's per-provider smokes carry the package until then |
+| **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; item 2's per-provider smokes carry the package until then |
 | **API hardening**: DocC, `Examples/`, public conformance kit | A developer other than us asks how to use or certify against the package |
 | **Publication**: name decision confirmed, README re-audit, first public tag | OS 27 GA **and** demand signals |
 | **iOS**: `ToolKitForiOS`, security-scoped file bodies, suspension validation | A real iOS consumer exists; the suspension-safe checkpoint design is already done and costs nothing to keep |
