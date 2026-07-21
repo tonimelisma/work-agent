@@ -36,6 +36,7 @@ code (JWT auth; "the second best open source model").
 
 ## 1. Review errata (2026-07-20 full-repo code review)
 
+**Ready plan: [plans/review-errata-fixes.md](../plans/review-errata-fixes.md).**
 Findings from the post-deletion review of the whole package — all verified
 against the tree, ranked; fold into the next code increment or take as one:
 
