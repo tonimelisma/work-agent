@@ -36,6 +36,8 @@ code (JWT auth; "the second best open source model").
 
 ## 1. Anthropic `redacted_thinking` blocks dropped (2026-07-20 review, unresolved)
 
+**Ready plan: [plans/redacted-thinking-fix.md](../plans/redacted-thinking-fix.md).**
+
 **`Sources/Executors/StreamParsing.swift`: the parser ignores `redacted_thinking`
 blocks; Anthropic requires thinking blocks replayed in tool loops, so a
 conversation that triggers one breaks on its next request.** Carried over from
