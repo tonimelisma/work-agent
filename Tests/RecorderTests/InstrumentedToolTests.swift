@@ -26,6 +26,46 @@ private struct FailingTool: Tool, Sendable {
     func call(arguments: EchoArguments) async throws -> String { throw ToolFailure.boom }
 }
 
+/// A `RunJournal` double that throws on one specific event kind so tests can pin down
+/// exactly what `InstrumentedTool` does when the journal itself is unavailable.
+private actor SelectivelyFailingJournal: RunJournal {
+    enum Failing { case registered, completed, nothing }
+    private let failing: Failing
+    private(set) var appended: [RunEvent] = []
+
+    init(failing: Failing) { self.failing = failing }
+
+    func append(_ event: RunEvent, for run: RunID) async throws {
+        switch (failing, event) {
+        case (.registered, .toolRegistered), (.completed, .toolCompleted):
+            throw ToolFailure.boom
+        default:
+            appended.append(event)
+        }
+    }
+
+    func events(for run: RunID) async throws -> [RunEvent] { appended }
+    func allRunIDs() async throws -> [RunID] { [] }
+}
+
+/// Counts calls without any locking concerns: the tests below only ever await one
+/// call at a time.
+private final class CallCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var count = 0
+    func increment() { lock.lock(); count += 1; lock.unlock() }
+}
+
+private struct CountingTool: Tool, Sendable {
+    let name = "counting"
+    let description = "Counts invocations."
+    let counter: CallCounter
+    func call(arguments: EchoArguments) async throws -> String {
+        counter.increment()
+        return arguments.text
+    }
+}
+
 @Test("A successful call journals registered → started → completed(true) and returns output")
 func instrumentedToolJournalsSuccess() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -76,4 +116,27 @@ func instrumentedToolJournalsFailure() async throws {
         return
     }
     #expect(!succeeded)
+}
+
+@Test("A journal that fails on registration is never worked around: the base tool doesn't run")
+func instrumentedToolPropagatesRegistrationFailure() async throws {
+    let journal = SelectivelyFailingJournal(failing: .registered)
+    let counter = CallCounter()
+    let wrapped = InstrumentedTool(CountingTool(counter: counter), runID: RunID(), journal: journal)
+
+    await #expect(throws: ToolInstrumentationError.self) {
+        _ = try await wrapped.call(arguments: EchoArguments(text: "hi"))
+    }
+    #expect(counter.count == 0)
+}
+
+@Test("A journal that fails only on completion still returns the tool's output")
+func instrumentedToolSurvivesCompletionFailure() async throws {
+    let journal = SelectivelyFailingJournal(failing: .completed)
+    let counter = CallCounter()
+    let wrapped = InstrumentedTool(CountingTool(counter: counter), runID: RunID(), journal: journal)
+
+    let output = try await wrapped.call(arguments: EchoArguments(text: "hi"))
+    #expect(output == "hi")
+    #expect(counter.count == 1)
 }

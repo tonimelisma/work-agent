@@ -62,10 +62,10 @@ Sources/
   ToolKitInteraction/                       ask_user, update_plan
   ToolKitForMac/                            umbrella: re-exports the three above
 Tests/
-  RecorderTests/                            16 tests: durability, semantics
-  ExecutorsTests/                           5 tests: SSE parsing, both wire formats
+  RecorderTests/                            21 tests: durability, semantics
+  ExecutorsTests/                           17 tests: SSE parsing, both wire formats, stream guards
   ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
-  ToolKitWebTests/                          13 tests: Markdown rendering, SSRF, search
+  ToolKitWebTests/                          16 tests: Markdown rendering, SSRF, redirects, search
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
 docs/                                       specs
 ```
@@ -101,7 +101,16 @@ conductor needs: `RunJournal`/`FileRunJournal` records events (`attemptStarted`,
 `TranscriptArchive` wraps Apple's `Transcript` with a version and a `replay(to:)`
 that strips a departing provider's opaque metadata so a session can continue on a
 different provider. None of this runs a loop or constructs a session — a host reads
-and writes these types around its own orchestration.
+and writes these types around its own orchestration. `FileRunJournal.events(for:)`
+tolerates a **torn tail**: a crash mid-append leaves a partial final line, and since
+that's the expected residue of the exact failure the journal exists to survive,
+everything decoded before it is still returned rather than the whole read throwing;
+corruption anywhere else in the file still throws `corruptEntry`, since that's a
+real integrity problem, not crash residue. `InstrumentedTool`'s `toolRegistered`
+journal write propagates its failure instead of swallowing it with `try?` — the
+registered-before-execute guarantee means a tool must never run unrecorded; the
+later `toolStarted`/`toolCompleted` writes stay best-effort on purpose, since a
+post-effect write failure must not destroy an already-successful result.
 
 **Tool tracing** is `InstrumentedTool<Base>` (package-internal, not publicly
 exported — the public wrapper API waits for a real external consumer): any plain
@@ -113,6 +122,19 @@ tool protocol. `ToolKit*` products depend only on
 `RecorderStore` is `Recorder`'s only other public surface: a
 read/append façade over the journal, for a host's own cost-display or history UI to
 read from — nothing in this repo uses it yet, since nothing in this repo is a host.
+
+**`fetch_url`'s redirects are walked manually, never by URLSession.** A
+`URLSessionTaskDelegate` blocks automatic redirect-following
+(`willPerformHTTPRedirectionResponse` returns `nil`), so a 3xx response's `Location`
+is inspected and re-validated by `NetworkSafety.assertPublicHost` on every hop
+before any request reaches it, capped at 5 hops. This replaces a real gap: with
+automatic following, the SSRF check only ever saw the *original* host, so a public
+URL that redirected to an internal address was fetched before the post-hoc
+cross-host check could reject it. The response body is also capped while
+streaming (`URLSession.AsyncBytes`, byte-by-byte), never after buffering the full
+response. Accepted, not fixed: DNS-rebinding TOCTOU — the host is resolved and
+checked once, then `URLSession` resolves it again to actually connect; closing
+that gap needs a custom connection layer this tool doesn't have.
 
 ## Testing
 
@@ -130,18 +152,23 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 67 tests: transcript
+The package's own suite (`swift test` from the repo root) is 87 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
-(standing in for a process restart), `InstrumentedTool` journaling, the migrated
-Apple-session-semantics suite (cancellation, revert-on-failure, concurrent tool
-scheduling, cross-provider transcript reconstruction) built on the reusable
-`ScriptedLanguageModel`, and the increment-5 tools: file paging/docx/glob/regex/
-read-before-write (`ToolKitFilesTests`, using an in-memory `.docx` fixture built with
-ZIPFoundation rather than a committed binary), `fetch_url`'s Markdown rendering and
-SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), and
-`ask_user`/`update_plan` validation against fake presenter/recorder doubles
-(`ToolKitInteractionTests`). It builds and passes on both macOS 27 and iOS 27
+(standing in for a process restart) including torn-tail and corrupt-checkpoint
+tolerance, `InstrumentedTool` journaling including its registration-failure
+propagation, the migrated Apple-session-semantics suite (cancellation,
+revert-on-failure, concurrent tool scheduling, cross-provider transcript
+reconstruction) built on the reusable `ScriptedLanguageModel`, the increment-5
+tools: file paging/docx/glob/regex/read-before-write (`ToolKitFilesTests`, using
+an in-memory `.docx` fixture built with ZIPFoundation rather than a committed
+binary), `fetch_url`'s Markdown rendering, redirect-walking, streaming-cap, and
+SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), the executor
+stream guards (non-SSE Content-Type, zero-event streams, error-body capture) and
+Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`
+(`ExecutorsTests`), and `ask_user`/`update_plan` validation against fake
+presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
+both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
 **Gap, named honestly.** Gated live-provider smoke tests (`LiveSmokeTests`,

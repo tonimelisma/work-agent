@@ -10,14 +10,28 @@ import Glibc
 // has to happen on the resolved IP, not the hostname string.
 public enum NetworkSafety {
     public static func assertPublicHost(_ host: String) async throws {
-        let addresses = try resolve(host)
+        let addresses = try await resolve(host)
         guard !addresses.isEmpty else { throw FetchURLError.disallowedHost(host) }
         for address in addresses where !isPublic(address) {
             throw FetchURLError.disallowedHost(host)
         }
     }
 
-    private static func resolve(_ host: String) throws -> [String] {
+    // `getaddrinfo` blocks on a real DNS round-trip; dispatched off the cooperative
+    // thread pool so it can't starve other structured-concurrency work while it waits.
+    private static func resolve(_ host: String) async throws -> [String] {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global().async {
+                do {
+                    continuation.resume(returning: try resolveBlocking(host))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private static func resolveBlocking(_ host: String) throws -> [String] {
         var hints = addrinfo(
             ai_flags: 0, ai_family: AF_UNSPEC, ai_socktype: SOCK_STREAM,
             ai_protocol: 0, ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil

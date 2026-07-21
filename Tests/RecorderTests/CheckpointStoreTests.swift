@@ -47,3 +47,23 @@ func fileCheckpointStoreDeletes() async throws {
     try await store.delete(runID)
     #expect(try await store.loadAll().isEmpty)
 }
+
+@Test("A corrupt checkpoint file alongside a good one doesn't block the good one")
+func fileCheckpointStoreSkipsCorruptFiles() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let store = try FileCheckpointStore(directory: directory)
+    let goodRunID = RunID()
+    let archive = TranscriptArchive(transcript: Transcript(entries: []))
+    try await store.save(RunCheckpoint(runID: goodRunID, status: .completed, archive: archive, executorID: "x"))
+
+    // A corrupt checkpoint file dropped directly, bypassing `save` (simulating a
+    // torn/partial write).
+    let corruptURL = directory.appendingPathComponent("\(RunID().rawValue.uuidString).json")
+    try Data("not valid json".utf8).write(to: corruptURL)
+
+    let loaded = try await store.loadAll()
+    #expect(loaded.count == 1)
+    #expect(loaded.first?.runID == goodRunID)
+}

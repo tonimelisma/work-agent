@@ -32,6 +32,54 @@ func fileRunJournalRoundTrips() async throws {
     ])
 }
 
+@Test("A torn tail (partial line, no trailing newline) returns everything decoded before it")
+func fileRunJournalTolersTornTail() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let runID = RunID()
+    let attemptID = AttemptID()
+    let journal = try FileRunJournal(directory: directory)
+    try await journal.append(.attemptStarted(runID, attemptID, executor: "deepseek"), for: runID)
+
+    // Simulate a crash mid-append: garbage bytes with no trailing newline, appended
+    // directly to the file underneath the journal (not through `append`, which always
+    // completes a full line).
+    let url = directory.appendingPathComponent("\(runID.rawValue.uuidString).jsonl")
+    let handle = try FileHandle(forWritingTo: url)
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data("{\"incomplete".utf8))
+    try handle.close()
+
+    let events = try await journal.events(for: runID)
+    #expect(events == [.attemptStarted(runID, attemptID, executor: "deepseek")])
+}
+
+@Test("Corruption before the last line still throws, with the right line number")
+func fileRunJournalThrowsOnMidFileCorruption() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let runID = RunID()
+    let attemptID = AttemptID()
+    let journal = try FileRunJournal(directory: directory)
+    try await journal.append(.attemptStarted(runID, attemptID, executor: "deepseek"), for: runID)
+
+    let url = directory.appendingPathComponent("\(runID.rawValue.uuidString).jsonl")
+    let handle = try FileHandle(forWritingTo: url)
+    try handle.seekToEnd()
+    // A corrupt line followed by a valid one: corruption is no longer the tail.
+    try handle.write(contentsOf: Data("not json at all\n".utf8))
+    let validLine = try JSONEncoder().encode(RunEvent.runCompleted(runID))
+    try handle.write(contentsOf: validLine)
+    try handle.write(contentsOf: Data("\n".utf8))
+    try handle.close()
+
+    await #expect(throws: RunJournalError.corruptEntry(runID: runID, line: 2)) {
+        _ = try await journal.events(for: runID)
+    }
+}
+
 @Test("allRunIDs enumerates every run that has a journal file")
 func fileRunJournalEnumeratesRuns() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

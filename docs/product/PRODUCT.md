@@ -9,7 +9,7 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 67 package tests, green on both platforms. MIT. This repo is
+`ToolKitForMac`). 87 package tests, green on both platforms. MIT. This repo is
 SPM-root — there is no app in this tree; a native reference app is a separate,
 later effort in its own repo (2026-07-20: "just delete it from this repo, and
 move the current repo to be an SPM repo for WorkKit").

@@ -72,18 +72,23 @@ public struct OpenAICompatibleExecutor: LanguageModelExecutor {
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-        try ExecutorRequestEncoding.validate(response: response, providerID: configuration.providerID)
+        let httpResponse = try await ExecutorRequestEncoding.validate(
+            response: response, bytes: bytes, providerID: configuration.providerID
+        )
+        try await ExecutorRequestEncoding.assertEventStream(
+            response: httpResponse, bytes: bytes, providerID: configuration.providerID
+        )
 
         var parser = OpenAICompatibleStreamParser()
         var bridge = ExecutorChannelBridge(requestID: request.id, providerID: configuration.providerID)
-        var lineNumber = 0
-        for try await line in bytes.lines {
-            lineNumber += 1
-            for event in try parser.consume(line, lineNumber: lineNumber) {
+        try await ExecutorRequestEncoding.consumeEventStream(
+            bytes: bytes, providerID: configuration.providerID,
+            parseLine: { line, lineNumber in try parser.consume(line, lineNumber: lineNumber) },
+            onEvent: { event in
                 for channelEvent in bridge.channelEvents(for: event) {
                     await channel.send(channelEvent)
                 }
             }
-        }
+        )
     }
 }

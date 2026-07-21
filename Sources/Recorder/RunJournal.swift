@@ -10,7 +10,7 @@ public protocol RunJournal: Sendable {
     func allRunIDs() async throws -> [RunID]
 }
 
-public enum RunJournalError: LocalizedError, Sendable {
+public enum RunJournalError: LocalizedError, Equatable, Sendable {
     case corruptEntry(runID: RunID, line: Int)
 
     public var errorDescription: String? {
@@ -55,9 +55,15 @@ public actor FileRunJournal: RunJournal {
         let url = fileURL(for: run)
         guard let data = try? Data(contentsOf: url) else { return [] }
         let decoder = JSONDecoder()
+        let lines = data.split(separator: UInt8(ascii: "\n"))
         var events: [RunEvent] = []
-        for (index, lineData) in data.split(separator: UInt8(ascii: "\n")).enumerated() {
+        for (index, lineData) in lines.enumerated() {
             guard let event = try? decoder.decode(RunEvent.self, from: Data(lineData)) else {
+                // A torn tail — a partial final line from a crash mid-append — is the
+                // expected residue of the exact failure this journal exists to survive;
+                // everything decoded before it is still good. Corruption anywhere else
+                // in the file is a real integrity problem and still throws.
+                if index == lines.count - 1 { return events }
                 throw RunJournalError.corruptEntry(runID: run, line: index + 1)
             }
             events.append(event)
