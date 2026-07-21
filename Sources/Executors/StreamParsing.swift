@@ -1,8 +1,7 @@
 import Foundation
 
-// REQ: agent-loop-implementation.md §4 — provider-neutral events the executors feed
-// into Apple's generation channel. Migrated from
-// Experiments/FoundationModelsPOC/Sources/FoundationModelsPOC/ExecutorFixtures.swift,
+// REQ: provider-neutral events the executors feed into Apple's generation
+// channel. Migrated from the pre-pivot Foundation Models POC (see `git log`),
 // proven live against DeepSeek, Google, and Anthropic (increment 3).
 public enum ExecutorEvent: Codable, Equatable, Sendable {
     case response(text: String)

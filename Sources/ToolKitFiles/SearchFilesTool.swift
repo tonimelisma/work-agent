@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 
 // REQ: FR-077 — search_files: content grep, native Swift, no bundled binary
-// ("I generally prefer native Swift", then "do it" — tool-architecture.md §6).
+// ("I generally prefer native Swift", then "do it").
 @Generable
 public struct SearchFilesArguments: Sendable {
     @Guide(description: "Regular expression to search for")

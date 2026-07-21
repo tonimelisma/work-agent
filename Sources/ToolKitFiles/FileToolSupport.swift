@@ -1,6 +1,6 @@
 import Foundation
 
-// REQ: tool-architecture.md §3 — "We don't have folders. Permissions come later."
+// REQ: tool-architecture.md — "We don't have folders. Permissions come later."
 // There is no folder-grant model: tools take ordinary paths, canonicalized, with a
 // per-task working directory as the relative-path base. The trace is the
 // accountability mechanism until the permissions increment exists — not a sandbox
@@ -56,7 +56,7 @@ public enum FileToolPath {
 }
 
 /// Which paths this conversation has read — the precondition for `edit_file`'s
-/// read-before-write rule (tool-architecture.md §3, Claude Code's contract).
+/// read-before-write rule (Claude Code's contract).
 public actor FileReadLedger {
     private var readPaths: Set<String> = []
 
@@ -86,8 +86,8 @@ enum FileKind {
     }
 }
 
-/// Token budgeting, applied uniformly by every file tool (tool-architecture.md §2's
-/// runner budgets, reapplied per-tool here since ToolKit doesn't depend on Recorder).
+/// Token budgeting, applied uniformly by every file tool (reapplied per-tool here
+/// since ToolKit doesn't depend on Recorder — see ENGINEERING.md "Tool tracing").
 enum OutputBudget {
     static func truncate(_ text: String, maximumCharacters: Int, recoveryHint: String) -> String {
         guard text.count > maximumCharacters else { return text }

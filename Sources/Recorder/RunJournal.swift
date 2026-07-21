@@ -1,6 +1,6 @@
 import Foundation
 
-// REQ: agent-loop-implementation.md §3 — the append-only run journal is execution
+// REQ: the append-only run journal is execution
 // truth, storage-protocol first so a host can choose the concrete store (this
 // package ships a file-backed implementation; a host's own persistence choice
 // does not have to be this protocol's backing).

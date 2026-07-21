@@ -2,10 +2,9 @@ import Foundation
 import FoundationModels
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §6, runtime-api.md §3 — the runtime hands the
-// session `InstrumentedTool<Base>` wrappers so every plain `FoundationModels.Tool`
-// gets tracing-before-budget and durable invocation identity just by running
-// through the runtime, with no second tool protocol to conform to.
+// REQ: see ENGINEERING.md "Tool tracing" — a host wraps a plain
+// `FoundationModels.Tool` in `InstrumentedTool<Base>` to get tracing-before-budget
+// and durable invocation identity, with no second tool protocol to conform to.
 struct InstrumentedTool<Base: Tool>: Tool where Base.Arguments: Generable {
     typealias Arguments = Base.Arguments
     typealias Output = Base.Output

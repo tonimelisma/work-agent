@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Recorder
 
-// REQ: agent-loop-implementation.md §6 — migrated from Experiments/FoundationModelsPOC.
+// REQ: migrated from the pre-pivot Foundation Models POC (see `git log`).
 
 @Test("Representative MCP object schema converts to Apple's GenerationSchema")
 func schemaBridgeBuildsGenerationSchema() throws {

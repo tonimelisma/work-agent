@@ -3,7 +3,7 @@ import FoundationModels
 
 // REQ: FR-079 — edit_file: exact-match string replacement, read-before-edit
 // enforced. Chosen over Codex's apply_patch because patch-fluency is
-// GPT-training-specific; exact-string-replace is model-agnostic (tool-architecture.md §3).
+// GPT-training-specific; exact-string-replace is model-agnostic.
 @Generable
 public struct EditFileArguments: Sendable {
     @Guide(description: "Absolute path, or relative to the tool's working directory")

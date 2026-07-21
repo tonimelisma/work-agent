@@ -2,9 +2,9 @@ import Foundation
 import FoundationModels
 
 // REQ: FR-083 — web_search: the provider's own hosted search where offered, else a
-// neutral Brave-backed search ("Both." — tool-architecture.md §3/§6). This type is
-// the neutral fallback; hosted search is the executor's job (agent-loop-implementation.md
-// §4's provider-extension tiers), not this tool.
+// neutral Brave-backed search ("Both."). This type is the neutral fallback; hosted
+// search is the executor's job (the three-tier provider-extension design in
+// ENGINEERING.md), not this tool.
 public enum WebSearchError: LocalizedError, Equatable, Sendable {
     case missingAPIKey
     case httpFailure(Int)

@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 
 // REQ: FR-076 — find_files: glob-match paths under a root. No gitignore semantics —
-// meaningless for document folders (tool-architecture.md §3).
+// meaningless for document folders.
 @Generable
 public struct FindFilesArguments: Sendable {
     @Guide(description: "Glob pattern, e.g. **/*.docx")

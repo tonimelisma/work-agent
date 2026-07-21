@@ -4,7 +4,7 @@ import Testing
 @testable import Recorder
 import RuntimeTesting
 
-// REQ: agent-loop-implementation.md §3, §8 — the durability guarantees Recorder
+// REQ: the durability guarantees Recorder
 // is built on top of (cancellation, revert-on-failure, tool-call ordering) are
 // Apple's session semantics, not Recorder's own code. Migrated from
 // Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/SessionSemanticsTests.swift

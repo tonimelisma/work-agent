@@ -3,7 +3,7 @@ import FoundationModels
 import Testing
 @testable import Recorder
 
-// REQ: agent-loop-implementation.md §6 — InstrumentedTool registers/starts/commits
+// REQ: InstrumentedTool registers/starts/commits
 // every call durably, in that order, regardless of whether the base tool succeeds.
 
 @Generable

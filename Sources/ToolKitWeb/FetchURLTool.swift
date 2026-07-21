@@ -3,7 +3,7 @@ import FoundationModels
 import SwiftSoup
 
 // REQ: FR-082 — fetch_url: a web page as paged Markdown, no extraction model call
-// ("no extraction model, no second model call" — tool-architecture.md §3).
+// ("no extraction model, no second model call").
 public enum FetchURLError: LocalizedError, Equatable, Sendable {
     case invalidURL(String)
     case disallowedHost(String)

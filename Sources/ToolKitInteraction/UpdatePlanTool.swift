@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 
 // REQ: FR-081 — update_plan: an ordered list of steps with exactly one in progress
-// (Codex's shape — tool-architecture.md §3), the data source for a friendly
+// (Codex's shape), the data source for a friendly
 // "watch a task run" display (FR-065).
 @Generable
 public struct PlanStep: Sendable {

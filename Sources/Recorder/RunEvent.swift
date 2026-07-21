@@ -1,7 +1,7 @@
 import Foundation
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §3 — the append-only run journal is execution
+// REQ: the append-only run journal is execution
 // truth. Each case here is a fact the journal records; nothing here is inferred
 // from UI state.
 public enum RunEvent: Codable, Sendable, Equatable {

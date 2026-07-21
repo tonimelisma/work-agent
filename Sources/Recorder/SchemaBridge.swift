@@ -1,8 +1,8 @@
 import Foundation
 import FoundationModels
 
-// REQ: agent-loop-implementation.md §2 — host Tool contract / Foundation Models bridge.
-// Migrated from Experiments/FoundationModelsPOC. Converts a raw JSON Schema (as decoded
+// REQ: host Tool contract / Foundation Models bridge. Migrated from the
+// pre-pivot Foundation Models POC (see `git log`). Converts a raw JSON Schema (as decoded
 // from `Any`) into Apple's `GenerationSchema`, for tool definitions that arrive as data
 // rather than as a Swift `@Generable` type — the case MCP tools land in later.
 

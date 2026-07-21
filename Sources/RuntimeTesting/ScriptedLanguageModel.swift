@@ -1,11 +1,10 @@
 import Foundation
 import FoundationModels
 
-// REQ: agent-loop-implementation.md §8, runtime-api.md §5 — deterministic scripted
-// executors are first-class public API, not test-only internals. Generalizes the
-// ad hoc SemanticsModel/SemanticsExecutor pattern proven in
-// Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/SessionSemanticsTests.swift
-// into a reusable double any consumer of this package can script against.
+// REQ: deterministic scripted executors are first-class public API, not
+// test-only internals — generalizes the ad hoc SemanticsModel/SemanticsExecutor
+// pattern proven in the pre-pivot Foundation Models POC (see `git log`) into a
+// reusable double any consumer of this package can script against.
 //
 // `LanguageModelExecutor.init(configuration:)` is called by Apple's session
 // machinery from just a `Hashable & Sendable` configuration value — it cannot

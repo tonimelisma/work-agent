@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 
 // REQ: FR-080 — ask_user: suspend the turn to ask the user 1-4 questions, resume on
-// answer (tool-architecture.md §3). The presenter protocol is the host-injected seam
+// answer. The presenter protocol is the host-injected seam
 // (this ToolKit product has no dependency on Recorder or a host's UI).
 //
 // Scope note (increment-4 DOR item): this suspends the in-memory call — it does not

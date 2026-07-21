@@ -6,7 +6,8 @@ import PackageDescription
 // is the package, not an app carrying a package.
 //
 // ToolKit* products depend only on FoundationModels, platform frameworks, and
-// ToolVocabulary — never on Recorder (runtime-api.md §6): a developer can use
+// ToolVocabulary — never on Recorder (see ENGINEERING.md "One package, many
+// small products"): a developer can use
 // ToolKitFiles with a vendor model package and no durable runs at all.
 let package = Package(
     name: "WorkKit",
@@ -23,9 +24,10 @@ let package = Package(
     ],
     dependencies: [
         // The only two external dependencies anywhere in the package (both pure
-        // Swift, pre-approved in docs/plans/tool-architecture.md §6): docx is a
-        // zip container (ZIPFoundation), and fetch_url renders HTML to Markdown
-        // by walking a real DOM (SwiftSoup) rather than hand-rolled regex.
+        // Swift, per Toni: "I generally prefer native Swift" — no bundled
+        // binaries): docx is a zip container (ZIPFoundation), and fetch_url
+        // renders HTML to Markdown by walking a real DOM (SwiftSoup) rather
+        // than hand-rolled regex.
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.19"),
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.7.5"),
     ],

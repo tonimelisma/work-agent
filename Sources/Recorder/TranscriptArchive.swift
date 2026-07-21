@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §3 — a versioned TranscriptArchive stores Apple's
+// REQ: a versioned TranscriptArchive stores Apple's
 // Codable transcript as the model-context projection; reconstruction derives a session
 // from committed run state and strips foreign-provider metadata, which a host's
 // cross-provider failover replays through.

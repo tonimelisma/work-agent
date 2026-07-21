@@ -2,9 +2,9 @@ import Foundation
 import FoundationModels
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §4 — our own Anthropic executor (the vendor
-// package is beta/BYOK-hostile per docs/product/RUNTIME.md §4). Migrated from
-// Experiments/FoundationModelsPOC's AnthropicLiveExecutor, proven live (increment 3).
+// REQ: our own Anthropic executor (the vendor package is beta/BYOK-hostile —
+// see ENGINEERING.md "Two executors, not eleven"). Migrated from the pre-pivot
+// Foundation Models POC's AnthropicLiveExecutor, proven live (increment 3).
 public struct AnthropicModel: LanguageModel {
     public typealias Executor = AnthropicExecutor
 

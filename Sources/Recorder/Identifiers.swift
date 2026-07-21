@@ -1,6 +1,6 @@
 import Foundation
 
-// REQ: agent-loop-implementation.md §3 — the only state Apple's FoundationModels
+// REQ: the only state Apple's FoundationModels
 // types don't already model: stable identity for a run, an attempt within it, and
 // a tool invocation within an attempt.
 

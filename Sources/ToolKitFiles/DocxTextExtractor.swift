@@ -1,8 +1,7 @@
 import Foundation
 
 // REQ: FR-074 — .docx → text: unzip the OOXML container, parse word/document.xml,
-// emit paragraph text with headings by style id and tables as markdown rows
-// (tool-architecture.md §3).
+// emit paragraph text with headings by style id and tables as markdown rows.
 enum DocxTextExtractor {
     static func text(fromDocumentXML data: Data) throws -> String {
         let delegate = DocumentXMLDelegate()

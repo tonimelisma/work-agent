@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §4, NFR-001, NFR-010 — one executor serves all
+// REQ: NFR-001, NFR-010 — one executor serves all
 // nine curated OpenAI-compatible providers (including Google's /v1beta/openai and
 // MiniMax's /v1); adding a provider is a `Configuration` value, never a new type.
 // Migrated from Experiments/FoundationModelsPOC's OpenAICompatibleLiveExecutor,

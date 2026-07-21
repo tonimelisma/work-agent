@@ -2,9 +2,8 @@ import Foundation
 import Testing
 @testable import Executors
 
-// REQ: agent-loop-implementation.md §4, §8 — the conformance corpus covers both
-// wire formats. Migrated from
-// Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/FoundationModelsPOCTests.swift.
+// REQ: the conformance corpus covers both wire formats. Migrated from the
+// pre-pivot Foundation Models POC (see `git log`).
 
 @Test("OpenAI-compatible fixtures preserve partial tool arguments and usage")
 func openAIParserPreservesPartialToolArguments() throws {

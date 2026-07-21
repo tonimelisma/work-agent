@@ -3,7 +3,7 @@ import Testing
 @testable import Recorder
 import ToolVocabulary
 
-// REQ: agent-loop-implementation.md §3 — the append-only run journal is execution
+// REQ: the append-only run journal is execution
 // truth; it must survive being read back from a fresh instance (crash/restart).
 
 @Test("Appended events round-trip in order from a fresh journal instance")

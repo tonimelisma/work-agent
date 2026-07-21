@@ -82,7 +82,7 @@ docs/                                       specs
 | Min macOS | **27.0** | NFR-009, Why below |
 | Package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, Why below |
 | Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac` | FR-074–083, tool-architecture.md |
-| Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in the package, both pre-approved pure Swift | tool-architecture.md §6 |
+| Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in the package, both pre-approved pure Swift | Package.swift |
 
 ## Architecture
 
@@ -107,10 +107,10 @@ and writes these types around its own orchestration.
 exported — the public wrapper API waits for a real external consumer): any plain
 `FoundationModels.Tool` gets durable invocation identity and a
 registered/started/completed journal trail just by running through it — no second
-tool protocol (runtime-api.md §3). `ToolKit*` products depend only on
+tool protocol. `ToolKit*` products depend only on
 `FoundationModels` and `ToolVocabulary`, never `Recorder` — a consumer can use
-`ToolKitFiles` with a vendor model package and no durable runs at all
-(runtime-api.md §6). `RecorderStore` is `Recorder`'s only other public surface: a
+`ToolKitFiles` with a vendor model package and no durable runs at all.
+`RecorderStore` is `Recorder`'s only other public surface: a
 read/append façade over the journal, for a host's own cost-display or history UI to
 read from — nothing in this repo uses it yet, since nothing in this repo is a host.
 
@@ -198,7 +198,7 @@ used to sit above the Recorder — moved to the Work Agent app in ROADMAP item 1
 first pass (2026-07-20), then left this project entirely when the app itself was
 deleted the same day. The package now has no session-owning public API and never
 will; its only conductor-adjacent public surface is `RecorderStore`, a read/append
-façade over the journal. Design: plans/runtime-api.md.
+façade over the journal.
 
 ### Three layers: Foundation Models under a durable runtime under a host
 
@@ -217,6 +217,23 @@ caveat, kept on purpose: for a single app alone a custom loop would also have
 served; Apple's protocol won because this package's market is Foundation Models
 developers. The falsifier and retreat path are recorded in ROADMAP's vision
 preamble.
+
+### Typed tools, not a shell/patch executor
+
+Two proven tool-design philosophies exist: Codex's single PTY executor plus a
+patch format (safety from an OS sandbox), and Claude Code's many typed tools
+(safety from per-tool permissions). This package took the typed-tool style, for
+reasons specific to us, not a general verdict: our eleven vendors' models share
+no `exec_command`/`apply_patch` RL training the way Codex's model does, but all
+of them have seen read/write/search-shaped tools, so conventionally-named typed
+tools are the lowest-variance interface across vendors and keep per-provider
+schema quirks confined to the adapters. A typed `read_file(path:)` also renders
+as "Read Q3 report.docx" for free in any UI, where an opaque shell string needs
+a command-parsing layer non-developers wouldn't trust anyway. Users' work lives
+in documents and folders, not terminals, so a shell tool's isolation story
+(needed before it could ship safely) stays deferred rather than built. Taken
+from Codex anyway: token-denominated output budgets with paging/truncation, and
+the effect/idempotency taxonomy tools carry as `ToolAnnotations` data.
 
 ### Two executors, not eleven
 
@@ -237,7 +254,7 @@ Swift's unit of encapsulation is the module; the package is the unit of versioni
 Pre-1.0, everything co-evolving against a beta OS shares one package so releases
 stay atomic (separate packages would need coordinated releases on every Apple ABI
 change — it already broke once between beta seeds). No module is allowed a second
-job; the product DAG in plans/runtime-api.md §6 is the contract. ToolKit products
+job; the file tree above and `Package.swift`'s target graph are the contract. ToolKit products
 depend only on FoundationModels + ToolVocabulary, never Recorder, so tools work
 with any model package and no runtime. A repo/package split happens when release
 cadences demonstrably diverge or an external consumer needs a piece standalone —

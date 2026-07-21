@@ -2,7 +2,7 @@ import Foundation
 
 // A run's status survives a host process restart. The checkpoint is the durable
 // position a host's conductor resumes from; it must be written before the run is
-// exposed to the host as safely paused/completed (agent-loop-implementation.md §5).
+// exposed to the host as safely paused/completed.
 public protocol CheckpointStore: Sendable {
     func save(_ checkpoint: RunCheckpoint) async throws
     func load(_ run: RunID) async throws -> RunCheckpoint?
