@@ -33,7 +33,8 @@ code (JWT auth — item 3; "the second best open source model").
 
 ## 1. The attachment refactor — and the demolition list
 
-Slimmed 2026-07-19 to its app-required half after the value re-analysis; the
+**Ready plan: [plans/refactor-demolition.md](../plans/refactor-demolition.md)**
+(codebase-verified 2026-07-20). Slimmed 2026-07-19 to its app-required half after the value re-analysis; the
 public attachment-API polish moved to the riffraff (an audience of external
 developers doesn't exist yet). What this item builds:
 
