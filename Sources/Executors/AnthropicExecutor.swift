@@ -322,13 +322,27 @@ enum ExecutorRequestEncoding {
 
             case let .reasoning(reasoning):
                 let owner = reasoning.metadata[TranscriptMetadataKeys.signatureProvider] as? String
-                guard owner == "anthropic", let signatureData = reasoning.signature,
-                      let signature = String(data: signatureData, encoding: .utf8) else { continue }
-                assistantBlocks.append([
-                    "type": "thinking",
-                    "thinking": try text(from: reasoning.segments, entryID: reasoning.id),
-                    "signature": signature,
-                ])
+                guard owner == "anthropic" else { continue }
+                // redacted_thinking blocks round-trip independently of a signed
+                // thinking block — a response can carry either or both. Ordered
+                // before the thinking block: an approximation of arrival order,
+                // since Anthropic validates block presence/content, not exact
+                // interleaving with the signed block.
+                if let redactedJSON = reasoning.metadata["anthropic.redacted_thinking"] as? String,
+                   let redactedData = redactedJSON.data(using: .utf8),
+                   let redactedStrings = try? JSONDecoder().decode([String].self, from: redactedData) {
+                    for value in redactedStrings {
+                        assistantBlocks.append(["type": "redacted_thinking", "data": value])
+                    }
+                }
+                if let signatureData = reasoning.signature,
+                   let signature = String(data: signatureData, encoding: .utf8) {
+                    assistantBlocks.append([
+                        "type": "thinking",
+                        "thinking": try text(from: reasoning.segments, entryID: reasoning.id),
+                        "signature": signature,
+                    ])
+                }
 
             case let .toolCalls(calls):
                 for call in calls {
@@ -386,6 +400,10 @@ struct ExecutorChannelBridge {
     private var sawResponse = false
     private var sawReasoning = false
     private var sawToolCall = false
+    // Multiple redacted_thinking blocks can arrive per response; each metadata
+    // update replaces the key, so the running set is kept here and re-encoded
+    // as a JSON array on every reasoning event, not just appended in place.
+    private var redactedThinkingData: [String] = []
 
     init(requestID: UUID, providerID: String) {
         responseEntryID = "response-\(requestID.uuidString)"
@@ -422,6 +440,13 @@ struct ExecutorChannelBridge {
                 ))
             }
             var values: [String: any Sendable & Codable & Equatable] = metadata
+            if let redacted = metadata["anthropic.redacted_thinking"] {
+                let (updated, json) = Self.accumulatedRedactedThinkingJSON(
+                    appending: redacted, to: redactedThinkingData
+                )
+                redactedThinkingData = updated
+                values["anthropic.redacted_thinking"] = json
+            }
             values[TranscriptMetadataKeys.signatureProvider] = providerID
             events.append(.reasoning(entryID: reasoningEntryID, action: .updateMetadata(values)))
             return events
@@ -482,5 +507,17 @@ struct ExecutorChannelBridge {
 
     private func estimatedTokens(_ text: String) -> Int {
         max(1, text.utf8.count / 4)
+    }
+
+    /// Pure accumulation step, pulled out of `channelEvents` so it's testable without
+    /// Apple's opaque `LanguageModelExecutorGenerationChannel.Event`/`Action` types,
+    /// which expose no way to inspect a produced event's contents from outside the
+    /// framework's own session machinery.
+    static func accumulatedRedactedThinkingJSON(
+        appending value: String, to existing: [String]
+    ) -> (updated: [String], json: String) {
+        let updated = existing + [value]
+        let json = (try? JSONEncoder().encode(updated)).map { String(decoding: $0, as: UTF8.self) } ?? value
+        return (updated, json)
     }
 }

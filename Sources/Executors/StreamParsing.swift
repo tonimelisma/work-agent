@@ -150,6 +150,15 @@ public struct AnthropicStreamParser: Sendable {
         case "content_block_start":
             let index = object["index"] as? Int ?? 0
             let block = object["content_block"] as? [String: Any] ?? [:]
+            // A redacted_thinking block arrives whole here — no deltas follow it —
+            // and must be replayed verbatim in later tool-use requests. Carried as
+            // reasoning metadata (not a new ExecutorEvent case) so the existing
+            // anthropic.-prefix strip in TranscriptArchive.replay(to:) already drops
+            // it on a provider switch with no archive changes.
+            if block["type"] as? String == "redacted_thinking" {
+                guard let data = block["data"] as? String, !data.isEmpty else { return [] }
+                return [.reasoning(text: "", signature: nil, metadata: ["anthropic.redacted_thinking": data])]
+            }
             guard block["type"] as? String == "tool_use" else { return [] }
             let state = ToolState(
                 id: block["id"] as? String ?? "",
