@@ -76,7 +76,7 @@ The Recorder's journal-before-execute guard starts earning rent here: "may have 
 locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (all
 three are OOXML zips — the ZIPFoundation path that reads docx writes them); no
 code-execution sandbox in the loop, unlike every competitor. Google
-Docs/Sheets/Slides only through existing MCP servers riding item 1 — we never
+Docs/Sheets/Slides only through existing MCP servers riding item 2 — we never
 build our own Google OAuth. Waved for value (2026-07-19 re-analysis): **wave 1 = PDF + docx** — the daily
 asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
