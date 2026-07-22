@@ -17,7 +17,7 @@ stands alone, and every dependency is an Apple framework.
 
 | Library | What it gives you | Depends on |
 |---|---|---|
-| **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — GPT, DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus Anthropic native. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
+| **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus native executors for Anthropic and for GPT on OpenAI's Responses API. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
 | **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders, document creation (PDF, docx, xlsx, pptx). Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **Recorder** | Attach one line and every run is remembered: timestamps, usage, cost, and the *full untruncated* tool output the transcript never keeps. Oversized results reach the model budgeted, with a history tool to page back into the rest. Recordings replay as offline regression suites | FoundationModels |
 | **Testing** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
@@ -33,8 +33,10 @@ Apple's protocol makes models swappable, but as of mid-2026 only Anthropic and
 Google ship provider packages — there is no Foundation Models package for
 OpenAI, DeepSeek, xAI, Moonshot, Alibaba, MiniMax, Meta, or Zhipu. These
 executors put them all behind the protocol today: one OpenAI-compatible
-executor covers the nine providers that share that wire format, and a native
-Anthropic executor covers Claude at full fidelity. None of it flattens what
+executor covers the nine providers that share that wire format, a native
+Anthropic executor covers Claude at full fidelity, and a third covers GPT on
+OpenAI's Responses API — where `gpt-5.6` will tool-call at all, which it will
+not on Chat Completions. None of it flattens what
 makes each provider different. DeepSeek requires its reasoning content echoed on the
 following request; the executor does this. Gemini attaches thought signatures
 to tool calls; they round-trip. Anthropic's signed thinking blocks replay
@@ -169,13 +171,16 @@ anywhere, and it's opt-in.
 
 Works with any `LanguageModel`: Apple's on-device model, Private Cloud
 Compute, [ClaudeForFoundationModels](https://github.com/anthropics/ClaudeForFoundationModels),
-Google's Gemini package, or the executors above. Verified to date through real
-`LanguageModelSession` tool cycles: DeepSeek, Google, and Anthropic, including
-provider-state replay and a live mid-run provider switch (2026-07-18); Alibaba,
-xAI, and Apple's own on-device `SystemLanguageModel` also verified live
-(2026-07-20). See
+Google's Gemini package, or the executors above. Verified through real
+`LanguageModelSession` tool cycles — a request, a tool call, a tool result, and
+a final response, not just a first streamed token: **9 of the 11 curated cloud
+providers pass as of 2026-07-21** (DeepSeek, Anthropic, Google, Alibaba, xAI,
+MiniMax, Meta, OpenAI, Moonshot), plus provider-state replay, a live mid-run
+provider switch, and Apple's own on-device `SystemLanguageModel`. The two that
+don't are account-side, not code: Zhipu's key is refused at the account level and
+Thinking Machines has no model deployed. See
 [docs/research/provider-chat-endpoints.md](docs/research/provider-chat-endpoints.md)
-for the full eleven-provider matrix, passes and failures both.
+for the full matrix, passes and failures both.
 
 ## Relationship to Foundation Models
 

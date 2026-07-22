@@ -3,7 +3,7 @@ import FoundationModels
 import Testing
 @testable import Executors
 
-// REQ: ROADMAP item 1 (2026-07-20 review, carried over from PR #12) — Anthropic
+// REQ: FR-001 (2026-07-20 review errata, carried over from PR #12) — Anthropic
 // redacted_thinking blocks must round-trip through the transcript's reasoning
 // metadata instead of being silently dropped by the stream parser.
 //

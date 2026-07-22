@@ -2,7 +2,7 @@ import Executors
 import Foundation
 import Testing
 
-// REQ: ROADMAP item 2 — one gated test per curated provider, all built on the
+// REQ: NFR-001, FR-084, FR-085 — one gated test per curated provider, all built on the
 // shared `LiveProviderProbe.assertRoundtrip` harness (LiveTestSupport.swift). Every
 // endpoint below is either previously probed live (docs/research/provider-chat-
 // endpoints.md, 2026-07-17) or, for xai/meta/thinkingmachines, taken from a fresh
@@ -56,13 +56,12 @@ struct ProviderMatrixTests {
         try await LiveProviderProbe.assertRoundtrip(model: model)
     }
 
+    // REQ: FR-085 — `gpt-5.6` cannot tool-call on `/v1/chat/completions` at all
+    // (HTTP 400 pointing at `/v1/responses`), so OpenAI runs on the Responses
+    // executor. The chat-completions path stays for providers that only speak it.
     @Test("openai: full tool-cycle roundtrip", .enabled(if: LiveEnv.key("OPENAI_API_KEY") != nil))
     func openai() async throws {
-        let model = OpenAICompatibleModel(
-            providerID: "openai", model: "gpt-5.6",
-            endpoint: URL(string: "https://api.openai.com/v1/chat/completions")!,
-            apiKey: LiveEnv.key("OPENAI_API_KEY") ?? ""
-        )
+        let model = OpenAIResponsesModel(model: "gpt-5.6", apiKey: LiveEnv.key("OPENAI_API_KEY") ?? "")
         try await LiveProviderProbe.assertRoundtrip(model: model)
     }
 

@@ -1,7 +1,7 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-07-20.
+change: 2026-07-21.
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -51,8 +51,9 @@ Sources/
     RecorderStore.swift                    read/append façade — a host's cost-display API
   Executors/
     OpenAICompatibleExecutor.swift          9 curated providers, one executor
-    AnthropicExecutor.swift                 Anthropic Messages
-    StreamParsing.swift                     SSE parsers, both wire formats
+    AnthropicExecutor.swift                 Anthropic Messages; request encoding + channel bridge
+    OpenAIResponsesExecutor.swift           OpenAI /v1/responses (the third wire shape)
+    StreamParsing.swift                     SSE parsers, all three wire formats
   RuntimeTesting/
     ScriptedLanguageModel.swift             closure-scripted LanguageModel double
   ToolKitFiles/                             read_file, list_folder, find_files,
@@ -63,9 +64,10 @@ Sources/
   ToolKitForMac/                            umbrella: re-exports the three above
 Tests/
   RecorderTests/                            21 tests: durability, semantics
-  ExecutorsTests/                           27 tests: SSE parsing, both wire formats, stream
-                                             guards, redacted-thinking round-trip, GLM JWT
-                                             construction (fixed clock)
+  ExecutorsTests/                           48 tests: SSE parsing, all three wire formats,
+                                             stream guards, tool-call-turn buffering through a
+                                             real session, redacted-thinking round-trip, GLM
+                                             JWT construction (fixed clock)
   ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
   ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
                                              search (16 offline + 1 live, BRAVE_API_KEY-gated)
@@ -94,7 +96,8 @@ docs/                                       specs
 ## Architecture
 
 The package never constructs a `URLRequest` to a model provider on a host's behalf —
-a host builds a concrete `LanguageModel` (`OpenAICompatibleModel` or `AnthropicModel`)
+a host builds a concrete `LanguageModel` (`OpenAICompatibleModel`, `AnthropicModel`,
+or `OpenAIResponsesModel`)
 and hands it, plus tools and instructions, directly to Apple's
 `LanguageModelSession`. The package has no import of SwiftUI, AppKit, UIKit, or any
 concrete host type (verified: nothing in `Sources/` imports a UI framework or a
@@ -174,13 +177,15 @@ SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), the executo
 stream guards (non-SSE Content-Type, zero-event streams, error-body capture),
 Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`, its
 `redacted_thinking` round-trip (parser, bridge accumulation, encoder ordering),
+the OpenAI Responses wire shape against frames captured live, the tool-call-turn
+buffering driven through a real `LanguageModelSession` on a scripted transport,
 and the GLM JWT construction against a fixed clock (`ExecutorsTests`), and
 `ask_user`/`update_plan` validation against fake
 presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
-**Live-provider verification, closed 2026-07-20.** A dedicated
+**Live-provider verification, re-measured 2026-07-21 at 9 of 11.** A dedicated
 `ExecutorsLiveTests` target (`Executors` + `ToolKitFiles` + `Recorder`) hits real
 provider APIs through this package's own production executors — the previous
 `LiveSmokeTests`/`ConductorTests` lived in the now-deleted Work Agent app's test
@@ -252,8 +257,8 @@ with timestamps and raw output, budgets+spill, the `read_tool_output` history
 tool, replay/evals, the journal-before-execute guard), standalone MCP, Testing,
 and small transcript utilities (save/load + the provider-state strip).
 `TaskCoordinator`/`RunPolicy`/`SessionAttempt` — the concrete orchestrator that
-used to sit above the Recorder — moved to the Work Agent app in ROADMAP item 1's
-first pass (2026-07-20), then left this project entirely when the app itself was
+used to sit above the Recorder — moved to the Work Agent app in the
+attachment pivot (2026-07-20), then left this project entirely when the app itself was
 deleted the same day. The package now has no session-owning public API and never
 will; its only conductor-adjacent public surface is `RecorderStore`, a read/append
 façade over the journal.
@@ -293,21 +298,71 @@ in documents and folders, not terminals, so a shell tool's isolation story
 from Codex anyway: token-denominated output budgets with paging/truncation, and
 the effect/idempotency taxonomy tools carry as `ToolAnnotations` data.
 
-### Two executors, not eleven
+### Three executors, not eleven
 
-Ten curated providers share the OpenAI-compatible wire format; one executor with
-per-provider presets covers them all. Anthropic gets a native Messages executor
-because compatibility shims lag exactly the capabilities that matter, and Anthropic
-is the single most important provider to get right. We keep our own Anthropic
-executor even though Anthropic ships a Foundation Models package: theirs assumes
-proxy-backend auth (vs. local BYOK keys), is beta and closed to contributions, and
-failover requires knowing precisely where provider state lives. Known cost we
-accepted: we own wire drift (base paths, reasoning field renames, dual endpoints),
-and staleness is silent until a provider breaks — the conformance suite is the
-drift detector. Anthropic's `redacted_thinking` blocks round-trip the same way
+Nine curated providers share the OpenAI-compatible wire format; one executor with
+per-provider presets covers them all. Two providers earn their own executor, on one
+rule: **a distinct wire format earns a distinct executor; a shared wire format never
+does.**
+
+- **Anthropic** — `/v1/messages`, event-typed SSE, `x-api-key`. Compatibility shims
+  lag exactly the capabilities that matter, and Anthropic is the single most
+  important provider to get right. We keep our own even though Anthropic ships a
+  Foundation Models package: theirs assumes proxy-backend auth (vs. local BYOK
+  keys), is beta and closed to contributions, and failover requires knowing
+  precisely where provider state lives.
+- **OpenAI** — `/v1/responses` (2026-07-21). Not a preference: `gpt-5.6` **cannot
+  tool-call on `/v1/chat/completions` at all** (HTTP 400 naming `/v1/responses` or
+  `reasoning_effort: 'none'`, and degrading reasoning to none would neuter the
+  model). The Responses API differs in every dimension that would otherwise be a
+  `Configuration` value — flat tool declarations, a flat `input` item list instead
+  of role-keyed `messages`, `function_call`/`function_call_output` items instead of
+  an assistant message carrying a `tool_calls` array, and typed SSE event names
+  instead of choice deltas. Folding that into `OpenAICompatibleExecutor` behind a
+  style flag would have made every method a two-branch switch. `store: false` plus
+  `include: ["reasoning.encrypted_content"]` keeps conversation state local, which
+  makes replaying the encrypted reasoning items on each follow-up mandatory; they
+  ride as `openai.reasoning_item` metadata, so the existing provider-prefix filter
+  strips them on a cross-provider replay with no archive changes.
+
+Known cost we accepted: we own wire drift (base paths, reasoning field renames, dual
+endpoints), and staleness is silent until a provider breaks — the conformance suite is
+the drift detector. Anthropic's `redacted_thinking` blocks round-trip the same way
 signed thinking blocks do: carried as reasoning-entry metadata (an opaque array,
 JSON-encoded, since a response can carry several), stripped by the existing
-provider-prefix filter on a cross-provider replay with no archive changes.
+provider-prefix filter on a cross-provider replay with no archive changes. The bridge
+restates that accumulated array on *every* reasoning metadata update rather than only
+on updates that carry a new block, because Apple's `updateMetadata` merge-vs-replace
+semantics are undocumented and unobservable from outside the framework — under replace
+semantics the thinking block's terminal `signature_delta` would silently wipe redacted
+blocks that arrived earlier in the same response.
+
+### A tool-call turn has no response entry
+
+Apple's session throws `"Session ended without producing a response"` if one
+generation yields **both** a Response entry and a ToolCalls entry — in either order,
+and `replaceTextSegment("")` does not undo it, because the channel exposes no
+entry-removal action (measured against OS 27; the six-variant table is in
+[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md)).
+Reasoning entries coexist with tool calls fine; only response text is fatal.
+
+Providers narrate before calling tools all the time — MiniMax streams its `<think>`
+block through `delta.content`, Meta a plain preamble, Anthropic routinely emits text
+before `tool_use` — so `ExecutorChannelBridge` **buffers assistant text whenever a
+tool call is still possible** and discards it if one arrives (a preamble is the model
+stating intent, not the answer; the answer arrives in the generation after the tool
+result). There is no earlier signal to act on: in OpenAI-compatible SSE a tool call
+can follow arbitrarily much content, so the decision is only available at end of
+stream. The buffer is forced by Apple's API surface, not chosen.
+
+The cost is that assistant text no longer streams token-by-token on a turn with tools
+enabled, and it is paid only where it must be: when `enabledToolDefinitions` is empty
+no tool call can arrive, and text streams unbuffered exactly as before. Usage moved
+into the same completion step for the same reason — which entry it belongs to is only
+knowable once the whole stream has been seen, and an `updateUsage` must not land on an
+entry the buffer has not created yet. A generation that produces nothing at all now
+fails with a provider-named diagnostic instead of Apple's opaque session error, which
+is what made two real bugs unreadable for a day.
 
 One of those presets is auth, not just base URL and model: GLM/Zhipu rejects its
 `id.secret` key as a raw bearer token and wants an HS256 JWT instead (see
@@ -316,9 +371,12 @@ GLM-specific executor, `OpenAICompatibleExecutor.Configuration.AuthStyle`
 (`.bearer` / `.zhipuJWT`) is one more `Configuration` value — the same "adding a
 provider is data, not a type" shape the rest of the ten follow. The JWT
 construction (`ZhipuJWT.token`) is pure given an injected clock, so it's tested
-against an exact expected token string offline; live, both of GLM's documented
-hosts still 401 a well-formed token as of 2026-07-20 (Testing, below) — the auth
-*style* is confirmed correct, the provider's actual requirement beyond it is not.
+against an exact expected token string offline. That test proves determinism, not
+conformance, so the live 401 was settled separately on 2026-07-21 by a four-header
+experiment: removing `sign_type` changes the provider's error code (1000 → 401),
+which means the server parses and accepts our token's shape and declines it at the
+account level. The auth *style* is confirmed correct **and sufficient**; the key's
+entitlement is not, and that is not ours to fix.
 
 ### One package, many small products
 

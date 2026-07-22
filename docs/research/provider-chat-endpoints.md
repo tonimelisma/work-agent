@@ -1,6 +1,7 @@
 # Provider chat endpoints — what each curated provider actually needs
 
-**Last verified:** 2026-07-20 (full tool-cycle probe, all eleven providers, real keys)
+**Last verified:** 2026-07-21 (full tool-cycle probe re-run after the FR-084/FR-085
+fixes; **9 of 11 pass**, four consecutive runs)
 **Why we looked:** Increment 2 streams chat from all eleven curated providers. Guessing
 endpoints/paths/auth would mean 404s and 401s discovered mid-UI. Feeds ADR-0007.
 
@@ -28,7 +29,7 @@ keys; kept as the historical record of what a bare connectivity check found.
 
 ## Probed live, 2026-07-20 (full tool-cycle, `ExecutorsLiveTests`)
 
-ROADMAP item 2: every provider driven through a real `LanguageModelSession` with a tool
+Every provider driven through a real `LanguageModelSession` with a tool
 (`SentinelTool`) — a request, a tool call, a second request replaying the tool result, a
 final text response — not just a first streamed token. Endpoint and model per provider are
 in `Tests/ExecutorsLiveTests/ProviderMatrixTests.swift`.
@@ -47,12 +48,109 @@ in `Tests/ExecutorsLiveTests/ProviderMatrixTests.swift`.
 | meta | `api.meta.ai/v1/chat/completions` (first-ever probe) | `muse-spark-1.1` | **Fails** — connects, but the session ends with `"Session ended without producing a response"` after the tool call, same symptom as MiniMax |
 | thinkingmachines | `tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1/chat/completions` (first-ever probe) | `inkling` | **Fails** — HTTP 400: `"Model 'inkling' is not supported: Tokenizer not supported for model inkling"`. `GET .../v1/models` with the same key returns an empty list — nothing is currently deployed on this account, despite `inkling` being the model models.dev's registry lists |
 
-**5 of 11 pass live tool-cycles as of 2026-07-20:** deepseek, anthropic, google, alibaba,
-xai. The other six connect (endpoint and auth are right) but fail at the tool-cycle step for
-provider-specific reasons named above — recorded honestly rather than narrowed back to a
-bare connectivity check to call it green. Fixing any of these beyond GLM's auth is out of
-this increment's scope (ROADMAP item 2's plan); each is a candidate for its own future
-roadmap item if it matters.
+**5 of 11 passed as of 2026-07-20.** Superseded by the 2026-07-21 diagnosis below,
+which found that **four of those six failures were ours, not the providers'**. Kept as
+the record of what the symptoms looked like before the cause was known.
+
+## Diagnosed and re-measured, 2026-07-21 — **9 of 11**
+
+Each 2026-07-20 failure was reproduced and isolated before anything was changed.
+
+| Provider | Result | What changed |
+|---|---|---|
+| deepseek, anthropic, google, alibaba, xai | **Pass** | unchanged |
+| minimax `MiniMax-M3` | **Pass** | FR-084 — our bug, below |
+| meta `muse-spark-1.1` | **Pass** | FR-084 — our bug, below |
+| openai `gpt-5.6` | **Pass** | FR-085 — moved to `/v1/responses` |
+| moonshotai `kimi-k3` | **Pass**, intermittent | nothing; see below |
+| zai (GLM) `glm-5.2` | **Fails** — 401 code 1000 | account-side; **Toni action** |
+| thinkingmachines `inkling` | **Fails** — HTTP 400, nothing deployed | account-side; **Toni action** |
+
+Four consecutive full-matrix runs on 2026-07-21: 9 pass, the same 2 fail, no flapping.
+
+### The class bug: a Response entry and a ToolCalls entry cannot coexist
+
+Apple's `LanguageModelSession` throws **"Session ended without producing a response"**
+whenever one generation produces both a Response entry and a ToolCalls entry. Measured
+with `ScriptedLanguageModel`, no provider involved:
+
+| Channel events in one generation | Result |
+|---|---|
+| toolCalls only | **OK** |
+| response text → toolCalls | **throws** |
+| toolCalls → response text | **throws** |
+| response text → toolCalls → `replaceTextSegment("")` | **throws** |
+| reasoning → toolCalls | **OK** |
+| the same text sent as reasoning → toolCalls | **OK** |
+
+Order is irrelevant and there is no undo: the OS 27 `swiftinterface` exposes only
+`response` / `reasoning` / `toolCalls` event factories and no entry-removal action, and
+`replaceTextSegment("")` leaves the entry in place. Hence the buffer in
+`ExecutorChannelBridge` (FR-084) — assistant text is withheld while a tool call is still
+possible and discarded if one arrives.
+
+Raw wire, captured 2026-07-21, showing why exactly these two providers tripped it:
+
+- **minimax** streams its chain of thought through `delta.content` wrapped in
+  `<think>…</think>` *and* duplicates it into `delta.reasoning`, then emits the tool
+  call. Its tool call is well-formed (`id`, `name`, then `arguments` as a separate
+  delta frame — the `id`/`name` arrive on the first frame only, which the parser
+  already carries forward per index).
+- **meta** streams a plain preamble — `"I'll call the sentinel tool now to retrieve
+  the required string."` — then the tool call. Its `arguments` are sometimes empty
+  (`""`) rather than `{}`; replaying that verbatim earns
+  `HTTP 400 "arguments must be valid JSON"` from Meta's own API, which is why both
+  encoders now normalize an empty argument string to `{}`.
+
+Nothing was wrong on either provider's side. This was also **latent for Anthropic**,
+whose models routinely emit text before `tool_use`; 2026-07-20 passed only because that
+turn's preamble happened to land in a thinking block.
+
+### moonshotai: intermittent model behavior, not a wire problem
+
+The 2026-07-20 record blamed our request body. Measured otherwise:
+
+- Raw `curl`, four schema variants — Apple-verbatim (including the `x-order` and
+  `title` keys `GenerationSchema` emits), no `x-order`, neither, and minimal —
+  `kimi-k3` called the tool in **all four**.
+- The executor's own request body, dumped and replayed: tool called in **2 of 3**
+  runs pre-fix, **4 of 4** post-fix. The one failing run fabricated a result rather
+  than calling the tool: `"sentinel_tool called successfully. Return value:
+  \`sentinel_ok_7f3a2b\`"` — a hallucinated sentinel.
+
+So `kimi-k3` sometimes hallucinates the tool result instead of calling the tool. Small
+sample; treat moonshotai as **intermittent**, and don't read a red moonshot run as a
+regression without re-running it.
+
+### The OpenAI Responses API (FR-085)
+
+`gpt-5.6` cannot tool-call on `/v1/chat/completions` at all, and the API's own advice —
+set `reasoning_effort` to `'none'` — would neuter the model. `/v1/responses` works;
+the full two-leg cycle was verified live 2026-07-21. It is a third wire shape:
+
+- `POST /v1/responses`, `Authorization: Bearer`, `stream: true`.
+- `store: false` plus `include: ["reasoning.encrypted_content"]` keeps conversation
+  state off OpenAI's servers, which makes replaying reasoning items mandatory.
+- **Tools are flat**, not nested under `function`:
+  `{"type":"function","name":…,"description":…,"parameters":…}`.
+- **`input` items, not `messages`**: `{"role":"user","content":…}`,
+  `{"type":"function_call","call_id":…,"name":…,"arguments":…}`,
+  `{"type":"function_call_output","call_id":…,"output":…}`, and reasoning items
+  `{"type":"reasoning","id":"rs_…","encrypted_content":…}` replayed verbatim
+  (confirmed accepted).
+- `tool_choice`: `auto` / `required` / `none`; `reasoning: {"effort": …}`;
+  `max_output_tokens`; system text goes in `instructions`, not an item.
+- SSE events (the `type` inside each `data:` payload):
+  `response.output_item.added` (item `function_call` → `call_id` + `name`),
+  `response.function_call_arguments.delta` → `delta`,
+  `response.output_text.delta` → `delta`, `response.output_item.done`,
+  `response.completed` → `response.usage.{input,output}_tokens`.
+- **Take reasoning `encrypted_content` from `response.output_item.done`, not from
+  `.added`** — the two carry *different* values for the same item id, and only the
+  `.done` one round-trips. Measured; this is the kind of thing that costs an hour.
+- The server rewrites the schema it is given: it coerced our `"required": []` to
+  `"required": ["note"]` and set `"strict": true`. It accepted `x-order` and `title`
+  unchanged.
 
 ## What this settles for the adapters (ADR-0007)
 
@@ -94,22 +192,42 @@ an exact expected token string for a fixed clock and key.
 **2026-07-20: still rejected even with a well-formed JWT.** Both hosts return
 `401 {"error":{"code":"1000","message":"Authentication Failed"}}` — confirmed twice, once
 through the package's live test and once via a standalone `curl` with an independently
-constructed JWT, ruling out a package-side encoding bug. Per the bounded-retry plan (two
-endpoints, no thrashing further), GLM stays failed. Whatever Zhipu actually wants beyond
-this documented community shape (a different claim set, a different signing key derivation,
-an account-side activation step) is unknown and would need Zhipu's own current docs or
-support to resolve — next time this is picked up, start there rather than re-deriving the
-JWT shape, which is now confirmed correct-but-insufficient.
+constructed JWT, ruling out a package-side encoding bug.
+
+**2026-07-21: confirmed account-side, by a discriminating experiment.** The evidence above
+did not actually separate "our token shape is wrong" from "the account is not entitled" —
+the unit test asserts the token equals a string the implementation itself produced
+(determinism, not conformance), and the `curl` used the same disputed shape. Four header
+variants were run against both hosts instead:
+
+| JWT header | `open.bigmodel.cn` | `api.z.ai` |
+|---|---|---|
+| `{alg, sign_type}` — what we ship | 401 code **1000** `身份验证失败` | 401 code **1000** `Authentication Failed` |
+| `{typ, alg, sign_type}` — PyJWT's default shape | 401 code **1000** | 401 code **1000** |
+| `{alg, sign_type, typ}` | 401 code **1000** | 401 code **1000** |
+| `{typ, alg}` — **`sign_type` removed** | 401 code **401** `令牌已过期或验证不正确` | 401 code **401** `token expired or incorrect` |
+
+Dropping `sign_type` produces a *different* error code, so the server parses the token and
+distinguishes a malformed/unverifiable one (**401**) from a structurally valid, correctly
+signed one it declines to authorize (**1000**). Ours lands in the 1000 branch, same as the
+raw bearer token. Adding `typ: JWT` changes nothing. **The token shape is right; the
+rejection is at the account or key-entitlement level.** Next step is Zhipu's console or
+support — not another round of JWT archaeology.
 
 ## Open / not done
 
-- **GLM auth beyond the JWT shape** — see above; the *shape* is built and confirmed
-  correctly constructed, but the provider still 401s. Unresolved.
-- **moonshotai, openai, minimax, meta, thinkingmachines tool-cycle failures** (2026-07-20,
-  see the table above) — each fails for a different provider-specific reason (ignored
-  tool_choice, an endpoint that plain doesn't support tool calling, an opaque session
-  termination, an undeployed model). None investigated further; out of ROADMAP item 2's
-  scope, each a candidate for its own future item.
+- **GLM's account entitlement** — the token shape is settled (above); the 401/1000 is
+  account-side and needs Zhipu's console or support. Nothing left to build here.
+- **thinkingmachines has nothing deployed** — `GET /v1/models` returns an empty list with
+  a valid key. Needs the account, not code.
+- **Streaming is buffered on tool-enabled turns** (FR-084). Assistant text cannot be sent
+  until the stream proves no tool call is coming, because Apple's channel offers no way to
+  remove an entry. Turns with no tools enabled still stream unbuffered. If Apple ever adds
+  an entry-removal or "convert to tool call" action, this buffer can go.
+- **Apple emits non-standard schema keys** — `GenerationSchema` encodes `x-order` and
+  `title` alongside standard JSON Schema, and we forward them verbatim. Measured harmless
+  on moonshotai (4 schema variants, all tool-called) and OpenAI Responses (accepted, then
+  rewritten server-side). Not measured on every provider; revisit if one rejects a tool.
 - **max_tokens defaults.** The OpenAI adapter sends no token cap (provider default);
   Anthropic requires one, set to 4096. Whether 4096 is a good ceiling is unmeasured.
 - **Non-streaming fallback.** Not built; everything assumes SSE.

@@ -4,15 +4,15 @@
 code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
 here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
 where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
-**Next free: FR-084 · NFR-011.**
+**Next free: FR-086 · NFR-012.**
 
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 110 package tests (98 run unconditionally — the on-device
-Apple model among them where hardware allows; 12 are `.env`-key-gated live
-provider/search smokes that self-skip without keys), green on both platforms.
-MIT. This repo is
+`ToolKitForMac`). 131 package tests (118 run unconditionally, plus 12
+`.env`-key-gated live provider/search smokes that self-skip without keys and 1
+device-gated on-device Apple model test that runs where hardware allows), green on
+both platforms. MIT. This repo is
 SPM-root — there is no app in this tree; a native reference app is a separate,
 later effort in its own repo (2026-07-20: "just delete it from this repo, and
 move the current repo to be an SPM repo for WorkKit").
@@ -47,17 +47,30 @@ move the current repo to be an SPM repo for WorkKit").
   `LanguageModel`, including Apple's own" claim rather than assuming it from the
   protocol conformance alone.
 
-## Executors: ten cloud providers behind the protocol
+## Executors: eleven cloud providers behind the protocol
 
-- **Implemented** (built with FR-001): one OpenAI-compatible executor covers the
-  nine curated providers sharing that wire format; one Anthropic executor speaks
-  Messages natively. *Why two, not eleven:* ten providers share one de facto wire
-  standard, so eleven bespoke clients would be waste; Anthropic gets native
-  treatment because a compatibility shim would lag the capabilities that matter.
-  *Why ours even where vendor packages exist:* Anthropic's package assumes
-  proxy-backend auth (opposed to local BYOK keys), is beta and closed to
+- **Implemented** (built with FR-001, FR-085): one OpenAI-compatible executor
+  covers the nine curated providers sharing that wire format; one Anthropic
+  executor speaks Messages natively; one OpenAI executor speaks the Responses API.
+  *Why three, not eleven:* nine providers share one de facto wire standard, so
+  bespoke clients for them would be waste; the other two are genuinely different
+  wire formats. Anthropic gets native treatment because a compatibility shim would
+  lag the capabilities that matter. OpenAI is not a preference at all — `gpt-5.6`
+  **cannot tool-call on `/v1/chat/completions`**, and the API's own suggested
+  workaround (`reasoning_effort: 'none'`) would neuter the model, against FR-060's
+  principle. *Why ours even where vendor packages exist:* Anthropic's package
+  assumes proxy-backend auth (opposed to local BYOK keys), is beta and closed to
   contributions, and cross-provider failover requires knowing exactly where
   provider state lives.
+- **A tool-call turn never carries a response entry (FR-084).** Apple's session
+  throws `"Session ended without producing a response"` if one generation yields
+  both, so assistant text is buffered while a tool call is still possible and
+  dropped if one arrives. *Why this is not a small detail:* every model that
+  narrates before calling a tool hit it — MiniMax and Meta failed outright, and
+  Anthropic was one preamble away from the same. *What it costs:* text no longer
+  streams token-by-token on a turn with tools enabled; Apple's channel has no way
+  to retract an entry, so the buffer is forced rather than chosen. Turns with no
+  tools enabled stream unchanged.
 - Provider-owned conversation state round-trips at full fidelity — DeepSeek's
   mandatory `reasoning_content` echo, Gemini thought signatures, Anthropic signed
   thinking blocks — verified live against real endpoints. *Why it matters:* these
@@ -67,24 +80,30 @@ move the current repo to be an SPM repo for WorkKit").
   same way (fixture-tested, not yet verified live — triggering a real redacted
   block isn't deterministic, so this waits on real usage rather than a synthetic
   live probe).
-- **Live-verified, full tool-cycle, 2026-07-20** (`ExecutorsLiveTests`): deepseek,
-  anthropic, google, alibaba, and xai (xai's first-ever live probe — endpoint
-  taken from a fresh models.dev fetch, confirmed live) complete a real request →
-  tool call → tool result → final response cycle end to end. moonshotai, openai,
-  minimax, meta (first-ever probe), and zai (GLM) connect with valid auth but fail
-  at the tool-cycle step for provider-specific reasons, and thinkingmachines
-  (first-ever probe) has no model currently deployed on this account — named
-  exactly in
-  [research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md),
-  not glossed over. *Why record the failures instead of only the passes:* "a
-  failing provider stays failed in the results table with its exact symptom" —
-  fixing them is future roadmap work, not claimed here.
-- **GLM (Zhipu) JWT auth built, not yet functional.** `OpenAICompatibleExecutor
-  .Configuration.AuthStyle.zhipuJWT` signs the HS256 JWT Zhipu's documented
-  community shape requires (id.secret key, HMAC-SHA256 via CryptoKit), verified
-  byte-exact against a fixed clock offline. The provider still 401s both hosts
-  live with a well-formed token as of 2026-07-20 — the auth *style* is no longer
-  the blocker; what Zhipu actually wants beyond it is unresolved.
+- **Live-verified, full tool-cycle: 9 of 11, re-measured 2026-07-21**
+  (`ExecutorsLiveTests`, four consecutive full-matrix runs): deepseek, anthropic,
+  google, alibaba, xai, **minimax, meta, openai, and moonshotai** complete a real
+  request → tool call → tool result → final response cycle end to end. The
+  2026-07-20 matrix read 5 of 11; diagnosing it found that **four of the six
+  failures were ours** — minimax and meta tripped FR-084, openai needed the
+  Responses API, and moonshotai was never broken at all. *Why record the failures
+  instead of only the passes:* "a failing provider stays failed in the results
+  table with its exact symptom" — and it paid: the symptom is what led to a class
+  bug that also threatened Anthropic.
+- **moonshotai passes intermittently.** `kimi-k3` sometimes fabricates a tool
+  result rather than calling the tool (measured: 2 of 3 pre-fix, 4 of 4 post-fix;
+  small sample). Nothing in the request body differs from a working hand-built
+  probe — four schema variants all tool-called. Recorded as model behavior, not
+  claimed as fixed and not scheduled.
+- **GLM (Zhipu): the token is right, the account is not.**
+  `OpenAICompatibleExecutor.Configuration.AuthStyle.zhipuJWT` signs the HS256 JWT
+  Zhipu requires (id.secret key, HMAC-SHA256 via CryptoKit). A 2026-07-21
+  four-header experiment settled what the earlier byte-exact test could not:
+  removing `sign_type` changes the provider's error code, so the server parses and
+  accepts our token's shape and declines it at the account level. Nothing left to
+  build; the key's entitlement is Toni's to check.
+- **thinkingmachines has nothing deployed** — `GET /v1/models` returns an empty
+  list with a valid key. Also not a code problem.
 
 ## The Recorder: durable-run substrate, attach-only
 
@@ -176,16 +195,23 @@ by grep; a ✗ is an honest gap, not an oversight.
 | FR-081 | The system shall provide an `update_plan` tool that records an ordered list of steps with exactly one in progress. | ✓ | ✓ |
 | FR-082 | The system shall provide a `fetch_url` tool that fetches a web page and returns it as paged Markdown, with no extraction model call. | ✓ | ✓ |
 | FR-083 | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | ✓ | ✓ stubbed + live (2026-07-20) |
+| FR-084 | When a provider streams assistant text and a tool call in the same generation, the system shall emit only the tool-call transcript entry, so the session runs the tool instead of failing. | ✓ | ✓ `ToolCallTurnTests` (through a real session) + live minimax/meta |
+| FR-085 | The system shall support OpenAI's Responses API as a distinct executor, completing a request → tool call → tool result → final response cycle for models that cannot tool-call on Chat Completions. | ✓ | ✓ `OpenAIResponsesTests` + live `gpt-5.6` |
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
 | NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✓ `AppleOnDeviceLiveTests` (2026-07-20, on-device leg); dual-platform CI build proves the rest |
+| NFR-011 | When a provider stream ends without producing any assistant content, tool call, or reasoning, the system shall fail with a provider-named diagnostic rather than an opaque session error. | ✓ | ✓ `ToolCallTurnTests` |
 
 ## Known gaps, named
 
-Recorded honestly rather than silently skipped: six of eleven cloud providers
-(moonshotai, openai, minimax, meta, zai/GLM, thinkingmachines) fail a live
-tool-cycle for provider-specific reasons named in
-[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md) —
-fixing them is future roadmap work, not this increment's; no host in this repo
+Recorded honestly rather than silently skipped: **two of eleven** cloud providers
+still fail a live tool-cycle, and neither is fixable from this repo — zai/GLM's key
+is rejected at the account level (the token shape is proven correct and sufficient)
+and thinkingmachines has no model deployed on the account. moonshotai passes but is
+**intermittent**: `kimi-k3` occasionally fabricates a tool result instead of calling
+the tool. All three are detailed in
+[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md).
+Assistant text does not stream token-by-token on a turn with tools enabled — FR-084
+must buffer it, since Apple's channel offers no way to retract an entry. No host in this repo
 wires `InstrumentedTool`, `ask_user`, or `update_plan` to anything — that's a
 consuming app's job, and no such app lives here anymore. Each is a roadmap item,
 not a footnote.

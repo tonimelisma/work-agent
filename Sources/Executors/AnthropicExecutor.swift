@@ -3,7 +3,7 @@ import FoundationModels
 import ToolVocabulary
 
 // REQ: our own Anthropic executor (the vendor package is beta/BYOK-hostile —
-// see ENGINEERING.md "Two executors, not eleven"). Migrated from the pre-pivot
+// see ENGINEERING.md "Three executors, not eleven"). Migrated from the pre-pivot
 // Foundation Models POC's AnthropicLiveExecutor, proven live (increment 3).
 public struct AnthropicModel: LanguageModel {
     public typealias Executor = AnthropicExecutor
@@ -53,7 +53,10 @@ public struct AnthropicExecutor: LanguageModelExecutor {
         try await ExecutorRequestEncoding.assertEventStream(response: httpResponse, bytes: bytes, providerID: "anthropic")
 
         var parser = AnthropicStreamParser()
-        var bridge = ExecutorChannelBridge(requestID: request.id, providerID: "anthropic")
+        var bridge = ExecutorChannelBridge(
+            requestID: request.id, providerID: "anthropic",
+            toolCallsPossible: !request.enabledToolDefinitions.isEmpty
+        )
         try await ExecutorRequestEncoding.consumeEventStream(
             bytes: bytes, providerID: "anthropic",
             parseLine: { line, lineNumber in try parser.consume(line, lineNumber: lineNumber) },
@@ -63,6 +66,9 @@ public struct AnthropicExecutor: LanguageModelExecutor {
                 }
             }
         )
+        for channelEvent in try bridge.completionEvents() {
+            await channel.send(channelEvent)
+        }
     }
 
     /// Maps Apple's `ContextOptions.ReasoningLevel` (verified against the OS 27
@@ -269,7 +275,10 @@ enum ExecutorRequestEncoding {
                     var encoded: [String: Any] = [
                         "id": call.id,
                         "type": "function",
-                        "function": ["name": call.toolName, "arguments": call.arguments.jsonString],
+                        "function": [
+                            "name": call.toolName,
+                            "arguments": toolCallArguments(call.arguments.jsonString),
+                        ],
                     ]
                     if let signature = call.metadata["google.thought_signature"] as? String {
                         encoded["extra_content"] = ["google": ["thought_signature": signature]]
@@ -294,6 +303,88 @@ enum ExecutorRequestEncoding {
         }
         flushAssistant()
         return messages
+    }
+
+    struct OpenAIResponsesRequest {
+        var instructions: String
+        var items: [[String: Any]]
+    }
+
+    /// REQ: FR-085 — the Responses API declares tools flat, not nested under a
+    /// `function` object the way Chat Completions does. Verified live 2026-07-21.
+    static func openAIResponsesTools(_ definitions: [Transcript.ToolDefinition]) throws -> [[String: Any]] {
+        try definitions.map { definition in
+            [
+                "type": "function",
+                "name": definition.name,
+                "description": definition.description,
+                "parameters": try schemaObject(definition.parameters),
+            ]
+        }
+    }
+
+    /// REQ: FR-085 — the Responses API takes a flat list of conversation *items*,
+    /// not role-keyed messages: a tool call is a `function_call` item and its result
+    /// a sibling `function_call_output`, never an assistant message with a
+    /// `tool_calls` array. Reasoning items replay verbatim from the metadata the
+    /// parser stored, which is what makes a reasoning model's follow-up turn work
+    /// under `store: false`.
+    static func openAIResponsesInput(from transcript: Transcript) throws -> OpenAIResponsesRequest {
+        var instructionParts: [String] = []
+        var items: [[String: Any]] = []
+
+        for entry in transcript {
+            switch entry {
+            case let .instructions(instructions):
+                let value = try text(from: instructions.segments, entryID: instructions.id)
+                if !value.isEmpty { instructionParts.append(value) }
+
+            case let .prompt(prompt):
+                items.append([
+                    "role": "user",
+                    "content": try text(from: prompt.segments, entryID: prompt.id),
+                ])
+
+            case let .reasoning(reasoning):
+                guard reasoning.metadata[TranscriptMetadataKeys.signatureProvider] as? String == "openai",
+                      let raw = reasoning.metadata["openai.reasoning_item"] as? String,
+                      let object = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any]
+                else { continue }
+                items.append(object)
+
+            case let .toolCalls(calls):
+                for call in calls {
+                    items.append([
+                        "type": "function_call",
+                        "call_id": call.id,
+                        "name": call.toolName,
+                        "arguments": toolCallArguments(call.arguments.jsonString),
+                    ])
+                }
+
+            case let .toolOutput(output):
+                items.append([
+                    "type": "function_call_output",
+                    "call_id": output.id,
+                    "output": try text(from: output.segments, entryID: output.id),
+                ])
+
+            case let .response(response):
+                let value = try text(from: response.segments, entryID: response.id)
+                if !value.isEmpty {
+                    items.append([
+                        "role": "assistant",
+                        "content": [["type": "output_text", "text": value]],
+                    ])
+                }
+
+            @unknown default:
+                throw LiveExecutorError.unsupportedTranscriptSegment(entryID: entry.id)
+            }
+        }
+        return OpenAIResponsesRequest(
+            instructions: instructionParts.joined(separator: "\n\n"), items: items
+        )
     }
 
     static func anthropicMessages(from transcript: Transcript) throws -> AnthropicRequest {
@@ -328,10 +419,8 @@ enum ExecutorRequestEncoding {
                 // before the thinking block: an approximation of arrival order,
                 // since Anthropic validates block presence/content, not exact
                 // interleaving with the signed block.
-                if let redactedJSON = reasoning.metadata["anthropic.redacted_thinking"] as? String,
-                   let redactedData = redactedJSON.data(using: .utf8),
-                   let redactedStrings = try? JSONDecoder().decode([String].self, from: redactedData) {
-                    for value in redactedStrings {
+                if let redactedJSON = reasoning.metadata["anthropic.redacted_thinking"] as? String {
+                    for value in decodedRedactedThinking(redactedJSON) {
                         assistantBlocks.append(["type": "redacted_thinking", "data": value])
                     }
                 }
@@ -350,7 +439,9 @@ enum ExecutorRequestEncoding {
                         "type": "tool_use",
                         "id": call.id,
                         "name": call.toolName,
-                        "input": try JSONSerialization.jsonObject(with: Data(call.arguments.jsonString.utf8)),
+                        "input": try JSONSerialization.jsonObject(
+                            with: Data(toolCallArguments(call.arguments.jsonString).utf8)
+                        ),
                     ])
                 }
 
@@ -377,6 +468,28 @@ enum ExecutorRequestEncoding {
         return AnthropicRequest(system: systemParts.joined(separator: "\n\n"), messages: messages)
     }
 
+    /// The bridge writes this key as a JSON array, but a value written by any other
+    /// path — a hand-built transcript, a future non-bridge writer — must not drop
+    /// silently: an undecodable value is treated as one opaque blob.
+    static func decodedRedactedThinking(_ value: String) -> [String] {
+        guard !value.isEmpty else { return [] }
+        if let data = value.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            return decoded
+        }
+        return [value]
+    }
+
+    /// A provider can emit a tool call with no arguments at all (Meta streams
+    /// `"arguments": ""` when the model passes none). Replaying that verbatim is
+    /// rejected — Meta's own API answers HTTP 400 `arguments must be valid JSON`,
+    /// and `anthropicMessages` would throw parsing it — so the empty case becomes
+    /// the empty object it means.
+    static func toolCallArguments(_ jsonString: String) -> String {
+        let trimmed = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "{}" : trimmed
+    }
+
     private static func schemaObject(_ schema: GenerationSchema) throws -> Any {
         let data = try JSONEncoder().encode(schema)
         return try JSONSerialization.jsonObject(with: data)
@@ -397,19 +510,33 @@ struct ExecutorChannelBridge {
     private let reasoningEntryID: String
     private let toolCallsEntryID: String
     private let providerID: String
+    private let toolCallsPossible: Bool
     private var sawResponse = false
     private var sawReasoning = false
     private var sawToolCall = false
+    private var lastFinishReason: String?
+    // REQ: FR-084 — assistant text is held here instead of streamed while a tool
+    // call is still possible; see `completionEvents()` for why it cannot be sent
+    // eagerly.
+    private var pendingResponseText = ""
+    // Usage is deferred to `completionEvents()` for the same reason: which entry
+    // it belongs to is only knowable once the whole stream has been seen, and an
+    // `updateUsage` must not land on an entry the buffer has not created yet.
+    private var pendingUsage: (input: Int, output: Int)?
     // Multiple redacted_thinking blocks can arrive per response; each metadata
     // update replaces the key, so the running set is kept here and re-encoded
     // as a JSON array on every reasoning event, not just appended in place.
     private var redactedThinkingData: [String] = []
 
-    init(requestID: UUID, providerID: String) {
+    /// - Parameter toolCallsPossible: whether this generation has any tool enabled.
+    ///   When it doesn't, no tool call can arrive and response text streams
+    ///   immediately, exactly as a plain chat turn always has.
+    init(requestID: UUID, providerID: String, toolCallsPossible: Bool) {
         responseEntryID = "response-\(requestID.uuidString)"
         reasoningEntryID = "reasoning-\(requestID.uuidString)"
         toolCallsEntryID = "tool-calls-\(requestID.uuidString)"
         self.providerID = providerID
+        self.toolCallsPossible = toolCallsPossible
     }
 
     mutating func channelEvents(
@@ -419,10 +546,14 @@ struct ExecutorChannelBridge {
         case let .response(text):
             guard !text.isEmpty else { return [] }
             sawResponse = true
-            return [.response(
-                entryID: responseEntryID,
-                action: .appendText(text, tokenCount: estimatedTokens(text))
-            )]
+            guard toolCallsPossible else {
+                return [.response(
+                    entryID: responseEntryID,
+                    action: .appendText(text, tokenCount: estimatedTokens(text))
+                )]
+            }
+            pendingResponseText += text
+            return []
 
         case let .reasoning(text, signature, metadata):
             sawReasoning = true
@@ -446,6 +577,16 @@ struct ExecutorChannelBridge {
                 )
                 redactedThinkingData = updated
                 values["anthropic.redacted_thinking"] = json
+            } else if !redactedThinkingData.isEmpty {
+                // A redacted block arrives at index 0, ahead of the thinking block's
+                // own deltas and its terminal signature_delta — every one of which
+                // produces a metadata update that does *not* carry the redacted key.
+                // Apple's `updateMetadata` merge-vs-replace semantics are
+                // undocumented and unobservable from outside the framework, so the
+                // accumulated array is restated on every update: a no-op if it
+                // merges, and the difference between working and silently losing
+                // the blocks if it replaces.
+                values["anthropic.redacted_thinking"] = Self.redactedThinkingJSON(redactedThinkingData)
             }
             values[TranscriptMetadataKeys.signatureProvider] = providerID
             events.append(.reasoning(entryID: reasoningEntryID, action: .updateMetadata(values)))
@@ -474,35 +615,70 @@ struct ExecutorChannelBridge {
             return events
 
         case let .usage(input, output):
-            let inputUsage = LanguageModelExecutorGenerationChannel.Usage.Input(
-                totalTokenCount: input, cachedTokenCount: 0
-            )
-            let outputUsage = LanguageModelExecutorGenerationChannel.Usage.Output(
-                totalTokenCount: output, reasoningTokenCount: 0
-            )
-            if sawToolCall {
-                return [.toolCalls(
-                    entryID: toolCallsEntryID,
-                    action: .updateUsage(input: inputUsage, output: outputUsage)
-                )]
-            }
-            if sawResponse {
-                return [.response(
-                    entryID: responseEntryID,
-                    action: .updateUsage(input: inputUsage, output: outputUsage)
-                )]
-            }
-            if sawReasoning {
-                return [.reasoning(
-                    entryID: reasoningEntryID,
-                    action: .updateUsage(input: inputUsage, output: outputUsage)
-                )]
-            }
+            pendingUsage = (input, output)
             return []
 
-        case .finish:
+        case let .finish(reason):
+            lastFinishReason = reason
             return []
         }
+    }
+
+    // REQ: FR-084 — Apple's session throws "Session ended without producing a
+    // response" if one generation yields both a Response entry and a ToolCalls
+    // entry, in either order, and the channel exposes no way to remove an entry
+    // once created (`replaceTextSegment("")` leaves it in place — measured, OS 27).
+    // So a provider that narrates before calling a tool — MiniMax streams its
+    // `<think>` block through `delta.content`, Meta a plain preamble, Anthropic
+    // routinely emits text before `tool_use` — can only be handled by withholding
+    // the text until the stream proves no tool call is coming.
+    //
+    // REQ: NFR-011 — and a stream that produced nothing at all fails here, named,
+    // rather than surfacing as Apple's opaque session error.
+    mutating func completionEvents() throws -> [LanguageModelExecutorGenerationChannel.Event] {
+        var events: [LanguageModelExecutorGenerationChannel.Event] = []
+        // The buffered preamble is deliberately dropped on a tool-call turn: it is
+        // the model narrating its intent, not the answer, and the answer arrives in
+        // the follow-up generation after the tool result.
+        if !sawToolCall, !pendingResponseText.isEmpty {
+            events.append(.response(
+                entryID: responseEntryID,
+                action: .appendText(pendingResponseText, tokenCount: estimatedTokens(pendingResponseText))
+            ))
+        }
+        guard sawToolCall || sawResponse || sawReasoning else {
+            throw ProviderStreamError.event(
+                provider: providerID,
+                type: "empty_generation",
+                message: "stream ended with no content, tool call, or reasoning"
+                    + (lastFinishReason.map { " (finish_reason: \($0))" } ?? "")
+            )
+        }
+        if let pendingUsage {
+            let inputUsage = LanguageModelExecutorGenerationChannel.Usage.Input(
+                totalTokenCount: pendingUsage.input, cachedTokenCount: 0
+            )
+            let outputUsage = LanguageModelExecutorGenerationChannel.Usage.Output(
+                totalTokenCount: pendingUsage.output, reasoningTokenCount: 0
+            )
+            if sawToolCall {
+                events.append(.toolCalls(
+                    entryID: toolCallsEntryID,
+                    action: .updateUsage(input: inputUsage, output: outputUsage)
+                ))
+            } else if sawResponse {
+                events.append(.response(
+                    entryID: responseEntryID,
+                    action: .updateUsage(input: inputUsage, output: outputUsage)
+                ))
+            } else if sawReasoning {
+                events.append(.reasoning(
+                    entryID: reasoningEntryID,
+                    action: .updateUsage(input: inputUsage, output: outputUsage)
+                ))
+            }
+        }
+        return events
     }
 
     private func estimatedTokens(_ text: String) -> Int {
@@ -517,7 +693,10 @@ struct ExecutorChannelBridge {
         appending value: String, to existing: [String]
     ) -> (updated: [String], json: String) {
         let updated = existing + [value]
-        let json = (try? JSONEncoder().encode(updated)).map { String(decoding: $0, as: UTF8.self) } ?? value
-        return (updated, json)
+        return (updated, redactedThinkingJSON(updated, fallback: value))
+    }
+
+    static func redactedThinkingJSON(_ values: [String], fallback: String = "") -> String {
+        (try? JSONEncoder().encode(values)).map { String(decoding: $0, as: UTF8.self) } ?? fallback
     }
 }

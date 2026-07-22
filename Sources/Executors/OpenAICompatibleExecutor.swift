@@ -103,7 +103,10 @@ public struct OpenAICompatibleExecutor: LanguageModelExecutor {
         )
 
         var parser = OpenAICompatibleStreamParser()
-        var bridge = ExecutorChannelBridge(requestID: request.id, providerID: configuration.providerID)
+        var bridge = ExecutorChannelBridge(
+            requestID: request.id, providerID: configuration.providerID,
+            toolCallsPossible: !request.enabledToolDefinitions.isEmpty
+        )
         try await ExecutorRequestEncoding.consumeEventStream(
             bytes: bytes, providerID: configuration.providerID,
             parseLine: { line, lineNumber in try parser.consume(line, lineNumber: lineNumber) },
@@ -113,6 +116,9 @@ public struct OpenAICompatibleExecutor: LanguageModelExecutor {
                 }
             }
         )
+        for channelEvent in try bridge.completionEvents() {
+            await channel.send(channelEvent)
+        }
     }
 }
 

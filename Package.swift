@@ -55,7 +55,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ExecutorsTests",
-            dependencies: ["Executors"],
+            // RuntimeTesting supplies the scripted model that drives `ExecutorChannelBridge`
+            // through a real `LanguageModelSession` offline — the only way to prove FR-084,
+            // since Apple's channel event types expose nothing to assert against directly.
+            dependencies: ["Executors", "RuntimeTesting"],
             resources: [.process("Fixtures")]
         ),
         .testTarget(

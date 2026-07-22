@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import Testing
 
-// REQ: ROADMAP item 2 — every provider claim becomes a verified fact. This target
+// REQ: NFR-001, NFR-010 — every provider claim becomes a verified fact. This target
 // hits real provider APIs and is gated per-test on the relevant `.env` key being
 // present, so plain `swift test` (no keys sourced) skips every test here silently.
 //

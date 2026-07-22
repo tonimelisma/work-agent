@@ -117,6 +117,87 @@ public struct OpenAICompatibleStreamParser: Sendable {
     }
 }
 
+// REQ: FR-085 — OpenAI's Responses API is a third wire shape, not a variant of
+// Chat Completions: typed SSE events carrying an item model rather than choice
+// deltas. Verified live against `gpt-5.6` on 2026-07-21; the event names and the
+// `.done`-not-`.added` rule below are measured, not inferred (see
+// research/provider-chat-endpoints.md "The OpenAI Responses API").
+public struct OpenAIResponsesStreamParser: Sendable {
+    private var toolCalls: [String: (index: Int, callID: String, name: String)] = [:]
+
+    public init() {}
+
+    public mutating func consume(_ line: String, lineNumber: Int) throws -> [ExecutorEvent] {
+        guard let object = try sseObject(from: line, lineNumber: lineNumber) else { return [] }
+
+        switch object["type"] as? String {
+        case "error", "response.failed":
+            let error = (object["response"] as? [String: Any])?["error"] as? [String: Any] ?? object
+            throw ProviderStreamError.event(
+                provider: "openai",
+                type: error["code"] as? String ?? error["type"] as? String,
+                message: error["message"] as? String
+            )
+
+        case "response.output_item.added":
+            let item = object["item"] as? [String: Any] ?? [:]
+            guard item["type"] as? String == "function_call" else { return [] }
+            let itemID = item["id"] as? String ?? ""
+            let state = (
+                index: toolCalls.count,
+                callID: item["call_id"] as? String ?? "",
+                name: item["name"] as? String ?? ""
+            )
+            toolCalls[itemID] = state
+            // Emitted even with an empty fragment so the tool call exists in the
+            // transcript when a model passes no arguments at all.
+            return [.toolCall(
+                index: state.index, id: state.callID, name: state.name,
+                argumentsFragment: item["arguments"] as? String ?? "", metadata: [:]
+            )]
+
+        case "response.function_call_arguments.delta":
+            guard let state = toolCalls[object["item_id"] as? String ?? ""] else { return [] }
+            return [.toolCall(
+                index: state.index, id: state.callID, name: state.name,
+                argumentsFragment: object["delta"] as? String ?? "", metadata: [:]
+            )]
+
+        case "response.output_text.delta":
+            return [.response(text: object["delta"] as? String ?? "")]
+
+        case "response.output_item.done":
+            // Reasoning items must be replayed verbatim on the next request when
+            // `store: false`, and `encrypted_content` differs between the `.added`
+            // and `.done` events for the same item — only the `.done` value is the
+            // one that round-trips.
+            let item = object["item"] as? [String: Any] ?? [:]
+            guard item["type"] as? String == "reasoning",
+                  let encoded = try? JSONSerialization.data(withJSONObject: item, options: [.sortedKeys])
+            else { return [] }
+            return [.reasoning(
+                text: "", signature: nil,
+                metadata: ["openai.reasoning_item": String(decoding: encoded, as: UTF8.self)]
+            )]
+
+        case "response.completed", "response.incomplete":
+            var events: [ExecutorEvent] = []
+            let response = object["response"] as? [String: Any] ?? [:]
+            if let usage = response["usage"] as? [String: Any] {
+                events.append(.usage(
+                    input: usage["input_tokens"] as? Int ?? 0,
+                    output: usage["output_tokens"] as? Int ?? 0
+                ))
+            }
+            events.append(.finish(reason: response["status"] as? String ?? "completed"))
+            return events
+
+        default:
+            return []
+        }
+    }
+}
+
 public struct AnthropicStreamParser: Sendable {
     private struct ToolState: Sendable {
         var id: String

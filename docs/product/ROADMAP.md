@@ -29,36 +29,23 @@ in neither place is a bug.
 
 ---
 
-## 1. Provider tool-cycle failures — review findings from the 2026-07-20 live matrix
+## 1. Two provider accounts need Toni, not code
 
-The live verification measured the headline claim at **5 of 11** providers passing
-a real tool cycle. Endpoint and auth are right on all six failures; the failures
-are at the tool-cycle layer, and at least three look like *our* work, not theirs.
-Ranked:
+The 2026-07-21 matrix reads **9 of 11**. The two failures are not fixable from this
+repo, and both are blocked on an account:
 
-1. **OpenAI needs a Responses API path.** `gpt-5.6` cannot tool-call on
-   `/v1/chat/completions` at all (HTTP 400: "use /v1/responses or set
-   reasoning_effort to 'none'"). Degrading reasoning to none would neuter the
-   model (against FR-060's principle), so the real fix is Responses API support
-   in the executor family — a third wire shape, and the biggest finding of the
-   matrix: until it lands, the README's "GPT" mention is measured-false for
-   agent use. Fix rather than caveat; caveat the README only if this item
-   stalls.
-2. **minimax + meta share one symptom** — Apple's "Session ended without
-   producing a response" after the tool call, reproducible standalone. Two
-   providers with the identical failure suggests a class bug on our side of the
-   second request (finish-reason mapping, empty-stream guard, or tool-result
-   encoding variance). Investigate with raw-wire capture before assuming
-   provider fault.
-3. **moonshotai ignores the tool under auto tool_choice** — suspicious, because
-   the 2026-07-16 probes showed `kimi-k3` emitting tool calls under auto.
-   Something in our request body (or the harness prompt) changed the behavior;
-   diff the working old probe body against the executor's request.
-4. **zai/GLM: 401 with a correctly-built JWT** (independently confirmed via
-   curl). The auth code is right; the rejection is account/key-side —
-   **Toni action**: check the Zhipu key's type/platform entitlement.
-5. **thinkingmachines: nothing deployed on the account** (`/v1/models` returns
-   empty) — **Toni action**: deploy/enable `inkling` or confirm the account.
+1. **zai/GLM: 401 at the account level.** The HS256 JWT we build is proven correct
+   *and sufficient* — a four-header experiment showed the server distinguishes a
+   malformed token (error 401) from a structurally valid one it declines (error
+   1000), and ours lands in the latter. **Toni action**: check the Zhipu key's type
+   and platform entitlement on their console.
+2. **thinkingmachines: nothing deployed.** `GET /v1/models` returns an empty list
+   with a valid key. **Toni action**: deploy/enable `inkling` or confirm the
+   account.
+
+Not scheduled as engineering work — nothing to build until an account answers.
+Evidence for both is in
+[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md).
 
 ## 2. Email: Gmail and Outlook via MCP
 
@@ -100,6 +87,8 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **Recorder completion**: output budgets + spill-to-store, the `read_tool_output` history tool, compaction-made-safe-by-recall | Real agent use hitting the context window (per-tool paging in `read_file`/`fetch_url` carries the package until then) |
 | **Replay + evals**: recordings replayed against other models/prompts, trajectory diffing, recorded-case CI suites | We need regression coverage when swapping models — or a developer asks |
 | **Provider fidelity tiers**: neutral prompt-caching API first, then hosted-search/thinking-budget neutral APIs, direct batch/file-store clients | Real usage data shows caching pays; a real feature needs the rest |
+| **Unbuffered assistant text on tool-enabled turns**: FR-084 must withhold text until the stream proves no tool call is coming, because Apple's channel has no entry-removal action | Apple adds a way to remove or convert an entry mid-generation, or a consumer reports the latency as a real problem |
+| **moonshotai's intermittent tool calling**: `kimi-k3` sometimes fabricates a tool result instead of calling the tool; nothing in our request body differs from a working hand-built probe | It stops being intermittent and starts being systematic, or Moonshot ships a fix worth re-measuring |
 | **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; the per-provider live tests (`ExecutorsLiveTests`) carry the package until then |
 | **API hardening**: DocC, `Examples/`, public conformance kit | A developer other than us asks how to use or certify against the package |
 | **Publication**: name decision confirmed, README re-audit, first public tag | OS 27 GA **and** demand signals |
