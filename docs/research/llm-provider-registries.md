@@ -1,6 +1,6 @@
 # LLM provider registries
 
-**Last verified:** 2026-07-16 (live API probed, not just docs)
+**Last verified:** 2026-07-22 (live API and Thinking Machines preset probed)
 **Why we looked:** The settings UI needs a list of providers and models. Maintaining
 that by hand is a treadmill — models ship weekly. Decided in ADR-0005.
 
@@ -106,6 +106,43 @@ Two lessons, and the second is the one that changes design:
 providers each, identical membership.** `catalog.json` is `{models, providers}` —
 258 provider-agnostic model entries plus the same provider tree. There is no
 completeness difference between the endpoints. The discrepancy was purely staleness.
+
+### A fresh registry entry can still be wrong: Thinking Machines
+
+The 2026-07-22 `thinkingmachines` entry is internally consistent but wrong for
+base Inkling:
+
+- provider API: Tinker's OpenAI-compatible
+  `.../tinker-prod/oai/api/v1`, with `@ai-sdk/openai-compatible`;
+- model ID: lowercase `inkling`;
+- limits/prices: the 256K variant's 256K / $3.74 / $9.36 / $0.748 values.
+
+Thinking Machines' official docs and a live two-request tool probe disagree on
+all three. Base Inkling is case-sensitive `thinkingmachines/Inkling` and is
+served directly by the Anthropic-compatible
+`.../tinker-prod/anthropic/api/v1/messages` endpoint. The OpenAI-compatible
+endpoint documents `tinker://.../sampler_weights/...` paths instead of base-model
+IDs. The base model is 64K and priced at $1.87 input, $4.68 output, and $0.374
+cached input; `thinkingmachines/Inkling:peft:262144` is the separate 256K,
+higher-priced variant.
+
+Upstream correction belongs in `anomalyco/models.dev`:
+
+1. `providers/thinkingmachines/provider.toml`: use `@ai-sdk/anthropic`, API base
+   `https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api`, and
+   the Anthropic-compatible documentation URL.
+2. Rename the provider model key from `inkling` to the case-sensitive
+   `thinkingmachines/Inkling` path while retaining
+   `base_model = "thinkingmachines/inkling"` for the canonical model record.
+3. Give the base provider entry the official 64K prices/limit; add
+   `thinkingmachines/Inkling:peft:262144` separately if the registry wants the
+   extended-context variant.
+4. Replace the OpenAI-specific `reasoning_content`/effort metadata with the
+   Anthropic endpoint's thinking-block and `output_config.effort` shape.
+
+This is why models.dev remains catalog input, not executable connection truth:
+freshness prevents missing models, but only live provider probes catch a fresh,
+well-formed wrong preset.
 
 ### Gaps and risks — the reason this doc exists
 

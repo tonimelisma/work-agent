@@ -33,8 +33,9 @@ Apple's protocol makes models swappable, but as of mid-2026 only Anthropic and
 Google ship provider packages — there is no Foundation Models package for
 OpenAI, DeepSeek, xAI, Moonshot, Alibaba, MiniMax, Meta, or Zhipu. These
 executors put them all behind the protocol today: one OpenAI-compatible
-executor covers the nine providers that share that wire format, a native
-Anthropic executor covers Claude at full fidelity, and a third covers GPT on
+executor covers the eight providers that share that wire format, a native
+Anthropic-compatible executor covers Claude and Thinking Machines' Inkling,
+and a third covers GPT on
 OpenAI's Responses API — where `gpt-5.6` will tool-call at all, which it will
 not on Chat Completions. None of it flattens what
 makes each provider different. DeepSeek requires its reasoning content echoed on the
@@ -173,12 +174,11 @@ Works with any `LanguageModel`: Apple's on-device model, Private Cloud
 Compute, [ClaudeForFoundationModels](https://github.com/anthropics/ClaudeForFoundationModels),
 Google's Gemini package, or the executors above. Verified through real
 `LanguageModelSession` tool cycles — a request, a tool call, a tool result, and
-a final response, not just a first streamed token: **9 of the 11 curated cloud
-providers pass as of 2026-07-21** (DeepSeek, Anthropic, Google, Alibaba, xAI,
-MiniMax, Meta, OpenAI, Moonshot), plus provider-state replay, a live mid-run
-provider switch, and Apple's own on-device `SystemLanguageModel`. The two that
-don't are account-side, not code: Zhipu's key is refused at the account level and
-Thinking Machines has no model deployed. See
+a final response, not just a first streamed token: **all 11 curated cloud
+providers pass as of 2026-07-22** (DeepSeek, Anthropic, Google, Alibaba, xAI,
+MiniMax, Meta, OpenAI, Moonshot, Zhipu, Thinking Machines), plus provider-state
+replay, a live mid-run provider switch, and Apple's own on-device
+`SystemLanguageModel`. See
 [docs/research/provider-chat-endpoints.md](docs/research/provider-chat-endpoints.md)
 for the full matrix, passes and failures both.
 

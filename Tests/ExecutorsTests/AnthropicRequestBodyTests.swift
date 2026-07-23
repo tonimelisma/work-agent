@@ -1,6 +1,7 @@
 import Foundation
 import FoundationModels
 import Testing
+import ToolVocabulary
 @testable import Executors
 
 // REQ: Anthropic's `output_config.effort` follows `ContextOptions.reasoningLevel`
@@ -20,6 +21,47 @@ private func request(reasoningLevel: ContextOptions.ReasoningLevel?) -> Language
 
 @Suite("Anthropic request body: reasoning-level effort mapping")
 struct AnthropicRequestBodyTests {
+    @Test("Thinking Machines uses its documented Anthropic-compatible Inkling preset")
+    func thinkingMachinesPreset() {
+        let endpoint = URL(
+            string: "https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api/v1/messages"
+        )!
+        let model = AnthropicModel(
+            model: "thinkingmachines/Inkling",
+            apiKey: "test-key",
+            endpoint: endpoint,
+            providerID: "thinkingmachines"
+        )
+
+        #expect(model.executorConfiguration.model == "thinkingmachines/Inkling")
+        #expect(model.executorConfiguration.endpoint == endpoint)
+        #expect(model.executorConfiguration.providerID == "thinkingmachines")
+    }
+
+    @Test("An Anthropic-compatible provider replays only its own signed reasoning")
+    func compatibleProviderOwnsReasoning() throws {
+        let transcript = Transcript(entries: [
+            .reasoning(Transcript.Reasoning(
+                id: "reasoning-1",
+                metadata: [TranscriptMetadataKeys.signatureProvider: "thinkingmachines"],
+                segments: [.text(.init(content: "provider thought"))],
+                signature: Data("provider-signature".utf8)
+            )),
+        ])
+
+        let encoded = try ExecutorRequestEncoding.anthropicMessages(
+            from: transcript, providerID: "thinkingmachines"
+        )
+        guard let content = encoded.messages.first?["content"] as? [[String: Any]],
+              let firstBlock = content.first
+        else {
+            Issue.record("expected an assistant thinking block")
+            return
+        }
+        #expect(firstBlock["type"] as? String == "thinking")
+        #expect(firstBlock["thinking"] as? String == "provider thought")
+    }
+
     @Test("No reasoning level omits output_config entirely (provider default)")
     func noLevelOmitsOutputConfig() throws {
         let body = try AnthropicExecutor.requestBody(model: "claude-x", request: request(reasoningLevel: nil))

@@ -82,7 +82,7 @@ struct OpenAIResponsesStreamParserTests {
 struct OpenAIResponsesEncodingTests {
     @Test("FR-085: tools are declared flat, not nested under a function object")
     func flatToolDeclaration() throws {
-        let definitions = try [Transcript.ToolDefinition(
+        let definitions = [Transcript.ToolDefinition(
             name: "sentinel_tool", description: "probe",
             parameters: GenerationSchema(type: SentinelProbeArguments.self, properties: [])
         )]

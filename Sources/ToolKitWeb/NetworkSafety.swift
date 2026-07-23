@@ -49,7 +49,9 @@ public enum NetworkSafety {
                 info.pointee.ai_addr, info.pointee.ai_addrlen,
                 &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST
             ) == 0 {
-                addresses.append(String(cString: buffer))
+                let terminator = buffer.firstIndex(of: 0) ?? buffer.endIndex
+                let bytes = buffer[..<terminator].map { UInt8(bitPattern: $0) }
+                addresses.append(String(decoding: bytes, as: UTF8.self))
             }
             current = info.pointee.ai_next
         }

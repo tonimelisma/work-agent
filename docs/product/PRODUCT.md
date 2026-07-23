@@ -9,7 +9,7 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 131 package tests (118 run unconditionally, plus 12
+`ToolKitForMac`). 133 package tests (120 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -50,11 +50,12 @@ move the current repo to be an SPM repo for WorkKit").
 ## Executors: eleven cloud providers behind the protocol
 
 - **Implemented** (built with FR-001, FR-085): one OpenAI-compatible executor
-  covers the nine curated providers sharing that wire format; one Anthropic
-  executor speaks Messages natively; one OpenAI executor speaks the Responses API.
-  *Why three, not eleven:* nine providers share one de facto wire standard, so
-  bespoke clients for them would be waste; the other two are genuinely different
-  wire formats. Anthropic gets native treatment because a compatibility shim would
+  covers the eight curated providers sharing that wire format; one
+  Anthropic-compatible executor speaks Messages for Anthropic and Thinking
+  Machines; one OpenAI executor speaks the Responses API.
+  *Why three, not eleven:* shared wire formats share executors, so bespoke clients
+  would be waste; the three formats are genuinely different. Anthropic gets native
+  treatment because a compatibility shim would
   lag the capabilities that matter. OpenAI is not a preference at all — `gpt-5.6`
   **cannot tool-call on `/v1/chat/completions`**, and the API's own suggested
   workaround (`reasoning_effort: 'none'`) would neuter the model, against FR-060's
@@ -80,9 +81,9 @@ move the current repo to be an SPM repo for WorkKit").
   same way (fixture-tested, not yet verified live — triggering a real redacted
   block isn't deterministic, so this waits on real usage rather than a synthetic
   live probe).
-- **Live-verified, full tool-cycle: 9 of 11, re-measured 2026-07-21**
-  (`ExecutorsLiveTests`, four consecutive full-matrix runs): deepseek, anthropic,
-  google, alibaba, xai, **minimax, meta, openai, and moonshotai** complete a real
+- **Live-verified, full tool-cycle: 11 of 11, re-measured 2026-07-22**
+  (`ExecutorsLiveTests`): deepseek, anthropic, google, alibaba, xai, **minimax,
+  meta, openai, moonshotai, zai/GLM, and thinkingmachines/Inkling** complete a real
   request → tool call → tool result → final response cycle end to end. The
   2026-07-20 matrix read 5 of 11; diagnosing it found that **four of the six
   failures were ours** — minimax and meta tripped FR-084, openai needed the
@@ -95,15 +96,24 @@ move the current repo to be an SPM repo for WorkKit").
   small sample). Nothing in the request body differs from a working hand-built
   probe — four schema variants all tool-called. Recorded as model behavior, not
   claimed as fixed and not scheduled.
-- **GLM (Zhipu): the token is right, the account is not.**
+- **xAI has one observed tool-refusal.** On one 2026-07-22 aggregate run,
+  `grok-4.5` invented a status response without invoking the sentinel. The
+  immediate isolated rerun and next full matrix passed. The harness records
+  whether the tool actually ran, so this remains visible as model behavior rather
+  than being mistaken for a successful cycle.
+- **GLM (Zhipu): the token and executor work end to end.**
   `OpenAICompatibleExecutor.Configuration.AuthStyle.zhipuJWT` signs the HS256 JWT
   Zhipu requires (id.secret key, HMAC-SHA256 via CryptoKit). A 2026-07-21
   four-header experiment settled what the earlier byte-exact test could not:
   removing `sign_type` changes the provider's error code, so the server parses and
-  accepts our token's shape and declines it at the account level. Nothing left to
-  build; the key's entitlement is Toni's to check.
-- **thinkingmachines has nothing deployed** — `GET /v1/models` returns an empty
-  list with a valid key. Also not a code problem.
+  accepts our token's shape. The same key completed the full tool cycle on
+  2026-07-22 with no code change, closing the account-side block and live-verifying
+  the shipped auth path.
+- **Thinking Machines uses Anthropic-compatible Messages.** The case-sensitive
+  model ID is `thinkingmachines/Inkling`. The provider's OpenAI-compatible
+  endpoint is for `tinker://` sampler checkpoint paths, not base Inkling; the
+  lowercase `inkling` preset inherited from models.dev was wrong. The corrected
+  endpoint and identifier complete the full tool cycle.
 
 ## The Recorder: durable-run substrate, attach-only
 
@@ -203,12 +213,9 @@ by grep; a ✗ is an honest gap, not an oversight.
 
 ## Known gaps, named
 
-Recorded honestly rather than silently skipped: **two of eleven** cloud providers
-still fail a live tool-cycle, and neither is fixable from this repo — zai/GLM's key
-is rejected at the account level (the token shape is proven correct and sufficient)
-and thinkingmachines has no model deployed on the account. moonshotai passes but is
-**intermittent**: `kimi-k3` occasionally fabricates a tool result instead of calling
-the tool. All three are detailed in
+All eleven cloud providers complete the live tool cycle. One is still recorded
+honestly as intermittent: `kimi-k3` occasionally fabricates a tool result instead
+of calling the tool. The evidence is detailed in
 [research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md).
 Assistant text does not stream token-by-token on a turn with tools enabled — FR-084
 must buffer it, since Apple's channel offers no way to retract an entry. No host in this repo

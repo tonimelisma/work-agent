@@ -50,8 +50,8 @@ Sources/
     InstrumentedTool.swift                 tracing/durable-identity Tool wrapper (internal)
     RecorderStore.swift                    read/append façade — a host's cost-display API
   Executors/
-    OpenAICompatibleExecutor.swift          9 curated providers, one executor
-    AnthropicExecutor.swift                 Anthropic Messages; request encoding + channel bridge
+    OpenAICompatibleExecutor.swift          8 curated providers, one executor
+    AnthropicExecutor.swift                 Anthropic-compatible Messages; request encoding + channel bridge
     OpenAIResponsesExecutor.swift           OpenAI /v1/responses (the third wire shape)
     StreamParsing.swift                     SSE parsers, all three wire formats
   RuntimeTesting/
@@ -64,7 +64,7 @@ Sources/
   ToolKitForMac/                            umbrella: re-exports the three above
 Tests/
   RecorderTests/                            21 tests: durability, semantics
-  ExecutorsTests/                           48 tests: SSE parsing, all three wire formats,
+  ExecutorsTests/                           50 tests: SSE parsing, all three wire formats,
                                              stream guards, tool-call-turn buffering through a
                                              real session, redacted-thinking round-trip, GLM
                                              JWT construction (fixed clock)
@@ -162,7 +162,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 110 tests: transcript
+The package's own suite (`swift test` from the repo root) is 133 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -185,7 +185,7 @@ presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
-**Live-provider verification, re-measured 2026-07-21 at 9 of 11.** A dedicated
+**Live-provider verification, re-measured 2026-07-22 at 11 of 11.** A dedicated
 `ExecutorsLiveTests` target (`Executors` + `ToolKitFiles` + `Recorder`) hits real
 provider APIs through this package's own production executors — the previous
 `LiveSmokeTests`/`ConductorTests` lived in the now-deleted Work Agent app's test
@@ -300,17 +300,22 @@ the effect/idempotency taxonomy tools carry as `ToolAnnotations` data.
 
 ### Three executors, not eleven
 
-Nine curated providers share the OpenAI-compatible wire format; one executor with
-per-provider presets covers them all. Two providers earn their own executor, on one
+Eight curated providers share the OpenAI-compatible wire format; one executor with
+per-provider presets covers them all. Two wire formats earn their own executor, on one
 rule: **a distinct wire format earns a distinct executor; a shared wire format never
 does.**
 
-- **Anthropic** — `/v1/messages`, event-typed SSE, `x-api-key`. Compatibility shims
+- **Anthropic-compatible Messages** — `/v1/messages`, event-typed SSE,
+  `x-api-key`. Anthropic is the primary provider: compatibility shims
   lag exactly the capabilities that matter, and Anthropic is the single most
   important provider to get right. We keep our own even though Anthropic ships a
   Foundation Models package: theirs assumes proxy-backend auth (vs. local BYOK
   keys), is beta and closed to contributions, and failover requires knowing
-  precisely where provider state lives.
+  precisely where provider state lives. Thinking Machines exposes base Inkling
+  through the same wire format, so `AnthropicModel` accepts a configured endpoint
+  and provider ID rather than duplicating the executor. Provider ID drives
+  diagnostics and transcript-metadata ownership; the default initializer remains
+  source-compatible with Anthropic.
 - **OpenAI** — `/v1/responses` (2026-07-21). Not a preference: `gpt-5.6` **cannot
   tool-call on `/v1/chat/completions` at all** (HTTP 400 naming `/v1/responses` or
   `reasoning_effort: 'none'`, and degrading reasoning to none would neuter the

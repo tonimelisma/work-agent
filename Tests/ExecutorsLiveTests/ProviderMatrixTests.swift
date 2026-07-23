@@ -117,21 +117,22 @@ struct ProviderMatrixTests {
         try await LiveProviderProbe.assertRoundtrip(model: model)
     }
 
-    // REQ: never probed before this increment — endpoint from models.dev `api.json`
-    // (2026-07-20): `thinkingmachines.api ==
-    // "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"`,
-    // `npm: "@ai-sdk/openai-compatible"` confirming the common adapter applies.
+    // Thinking Machines' official docs expose base Inkling through an
+    // Anthropic-compatible endpoint. The OpenAI-compatible endpoint models.dev
+    // originally pointed at accepts `tinker://` sampler checkpoint paths instead,
+    // and `inkling` was also the wrong case-sensitive model identifier.
     @Test(
-        "thinkingmachines: full tool-cycle roundtrip (first-ever probe)",
+        "thinkingmachines: full tool-cycle roundtrip",
         .enabled(if: LiveEnv.key("TINKER_API_KEY") != nil)
     )
     func thinkingmachines() async throws {
-        let model = OpenAICompatibleModel(
-            providerID: "thinkingmachines", model: "inkling",
+        let model = AnthropicModel(
+            model: "thinkingmachines/Inkling",
+            apiKey: LiveEnv.key("TINKER_API_KEY") ?? "",
             endpoint: URL(
-                string: "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1/chat/completions"
+                string: "https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api/v1/messages"
             )!,
-            apiKey: LiveEnv.key("TINKER_API_KEY") ?? ""
+            providerID: "thinkingmachines"
         )
         try await LiveProviderProbe.assertRoundtrip(model: model)
     }

@@ -1,7 +1,6 @@
 # Provider chat endpoints — what each curated provider actually needs
 
-**Last verified:** 2026-07-21 (full tool-cycle probe re-run after the FR-084/FR-085
-fixes; **9 of 11 pass**, four consecutive runs)
+**Last verified:** 2026-07-22 (full tool-cycle probe; **11 of 11 pass**)
 **Why we looked:** Increment 2 streams chat from all eleven curated providers. Guessing
 endpoints/paths/auth would mean 404s and 401s discovered mid-UI. Feeds ADR-0007.
 
@@ -64,9 +63,32 @@ Each 2026-07-20 failure was reproduced and isolated before anything was changed.
 | openai `gpt-5.6` | **Pass** | FR-085 — moved to `/v1/responses` |
 | moonshotai `kimi-k3` | **Pass**, intermittent | nothing; see below |
 | zai (GLM) `glm-5.2` | **Fails** — 401 code 1000 | account-side; **Toni action** |
-| thinkingmachines `inkling` | **Fails** — HTTP 400, nothing deployed | account-side; **Toni action** |
+| thinkingmachines `inkling` | **Fails** — HTTP 400; the empty OpenAI-compatible `/models` response was initially misread as nothing deployed | initially classified account-side; disproved by the 2026-07-22 correction below |
 
 Four consecutive full-matrix runs on 2026-07-21: 9 pass, the same 2 fail, no flapping.
+
+## Re-measured and corrected, 2026-07-22 — **11 of 11**
+
+The full live matrix was rerun after the repository rename and Xcode 27 install.
+The nine prior passes passed again. Zhipu/GLM, with the same shipped JWT auth
+path and no intervening executor change, now also completes the full request →
+tool call → tool result → final response cycle. Its prior 401 was therefore the
+account-side block the 2026-07-21 experiment indicated, and that block is now
+closed.
+
+The first rerun still showed Thinking Machines failing because the live test had
+copied two bad values from models.dev: lowercase `inkling` on Tinker's
+OpenAI-compatible endpoint. Thinking Machines' official docs instead specify
+case-sensitive `thinkingmachines/Inkling` on the Anthropic-compatible
+`.../anthropic/api/v1/messages` endpoint. The OpenAI-compatible endpoint is for
+`tinker://` sampler checkpoint paths, so its empty `/v1/models` response was not
+evidence that base Inkling was undeployed.
+
+A direct two-leg probe of the documented Messages endpoint produced
+`thinking` + `tool_use`, accepted the tool result, and returned the sentinel.
+After `AnthropicExecutor` gained configurable endpoint/provider ownership, the
+package's real `LanguageModelSession` live test completed the same full cycle.
+Final result: **11 of 11 pass**.
 
 ### The class bug: a Response entry and a ToolCalls entry cannot coexist
 
@@ -122,6 +144,12 @@ So `kimi-k3` sometimes hallucinates the tool result instead of calling the tool.
 sample; treat moonshotai as **intermittent**, and don't read a red moonshot run as a
 regression without re-running it.
 
+The 2026-07-22 final matrix exposed the same class of model behavior once from
+`xai/grok-4.5`: it returned a fabricated status string without calling the tool.
+The immediate isolated rerun and the next complete 11-provider matrix both passed.
+As with Moonshot, a single tool-refusal is not evidence of an executor regression;
+the recorded tool-call flag distinguishes model behavior from a broken second leg.
+
 ### The OpenAI Responses API (FR-085)
 
 `gpt-5.6` cannot tool-call on `/v1/chat/completions` at all, and the API's own advice —
@@ -154,10 +182,11 @@ the full two-leg cycle was verified live 2026-07-21. It is a third wire shape:
 
 ## What this settles for the adapters (ADR-0007)
 
-- **The OpenAI wire format is a de facto standard.** Ten of eleven speak
-  `POST {base}/chat/completions`, `stream:true`, SSE, bearer auth. One adapter covers them.
-- **Anthropic is the exception** — `/v1/messages`, event-typed SSE, `x-api-key`. Its own
-  adapter.
+- **The OpenAI-compatible wire format covers eight curated presets:**
+  `POST {base}/chat/completions`, `stream:true`, SSE, bearer auth.
+- **Anthropic-compatible Messages covers two:** Anthropic and Thinking Machines
+  base Inkling use `/v1/messages`, event-typed SSE, and `x-api-key`.
+- **OpenAI is the third shape:** `/v1/responses`, typed item events.
 - **Two base-URL overrides** are needed because the registry's `api` isn't the
   OpenAI-compatible surface:
   - `google` — registry `api` is native Gemini; the OpenAI-compatible endpoint is under
@@ -211,15 +240,13 @@ Dropping `sign_type` produces a *different* error code, so the server parses the
 distinguishes a malformed/unverifiable one (**401**) from a structurally valid, correctly
 signed one it declines to authorize (**1000**). Ours lands in the 1000 branch, same as the
 raw bearer token. Adding `typ: JWT` changes nothing. **The token shape is right; the
-rejection is at the account or key-entitlement level.** Next step is Zhipu's console or
-support — not another round of JWT archaeology.
+rejection is at the account or key-entitlement level.**
+
+**2026-07-22: account block cleared.** The unchanged executor and key completed
+the full live tool cycle. This closes the open entitlement issue and provides
+end-to-end confirmation of the JWT implementation.
 
 ## Open / not done
-
-- **GLM's account entitlement** — the token shape is settled (above); the 401/1000 is
-  account-side and needs Zhipu's console or support. Nothing left to build here.
-- **thinkingmachines has nothing deployed** — `GET /v1/models` returns an empty list with
-  a valid key. Needs the account, not code.
 - **Streaming is buffered on tool-enabled turns** (FR-084). Assistant text cannot be sent
   until the stream proves no tool call is coming, because Apple's channel offers no way to
   remove an entry. Turns with no tools enabled still stream unbuffered. If Apple ever adds

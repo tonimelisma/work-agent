@@ -11,8 +11,15 @@ public struct AnthropicModel: LanguageModel {
     public let capabilities = LanguageModelCapabilities([.reasoning, .toolCalling])
     public let executorConfiguration: AnthropicExecutor.Configuration
 
-    public init(model: String, apiKey: String) {
-        executorConfiguration = .init(model: model, apiKey: apiKey)
+    public init(
+        model: String,
+        apiKey: String,
+        endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!,
+        providerID: String = "anthropic"
+    ) {
+        executorConfiguration = .init(
+            model: model, apiKey: apiKey, endpoint: endpoint, providerID: providerID
+        )
     }
 }
 
@@ -20,10 +27,19 @@ public struct AnthropicExecutor: LanguageModelExecutor {
     public struct Configuration: Hashable, Sendable {
         public var model: String
         public var apiKey: String
+        public var endpoint: URL
+        public var providerID: String
 
-        public init(model: String, apiKey: String) {
+        public init(
+            model: String,
+            apiKey: String,
+            endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!,
+            providerID: String = "anthropic"
+        ) {
             self.model = model
             self.apiKey = apiKey
+            self.endpoint = endpoint
+            self.providerID = providerID
         }
     }
 
@@ -39,26 +55,32 @@ public struct AnthropicExecutor: LanguageModelExecutor {
         model: AnthropicModel,
         streamingInto channel: LanguageModelExecutorGenerationChannel
     ) async throws {
-        var urlRequest = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        var urlRequest = URLRequest(url: configuration.endpoint)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue(configuration.apiKey, forHTTPHeaderField: "x-api-key")
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = try AnthropicExecutor.requestBody(model: configuration.model, request: request)
+        let body = try AnthropicExecutor.requestBody(
+            model: configuration.model, request: request, providerID: configuration.providerID
+        )
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-        let httpResponse = try await ExecutorRequestEncoding.validate(response: response, bytes: bytes, providerID: "anthropic")
-        try await ExecutorRequestEncoding.assertEventStream(response: httpResponse, bytes: bytes, providerID: "anthropic")
+        let httpResponse = try await ExecutorRequestEncoding.validate(
+            response: response, bytes: bytes, providerID: configuration.providerID
+        )
+        try await ExecutorRequestEncoding.assertEventStream(
+            response: httpResponse, bytes: bytes, providerID: configuration.providerID
+        )
 
-        var parser = AnthropicStreamParser()
+        var parser = AnthropicStreamParser(providerID: configuration.providerID)
         var bridge = ExecutorChannelBridge(
-            requestID: request.id, providerID: "anthropic",
+            requestID: request.id, providerID: configuration.providerID,
             toolCallsPossible: !request.enabledToolDefinitions.isEmpty
         )
         try await ExecutorRequestEncoding.consumeEventStream(
-            bytes: bytes, providerID: "anthropic",
+            bytes: bytes, providerID: configuration.providerID,
             parseLine: { line, lineNumber in try parser.consume(line, lineNumber: lineNumber) },
             onEvent: { event in
                 for channelEvent in bridge.channelEvents(for: event) {
@@ -89,9 +111,13 @@ public struct AnthropicExecutor: LanguageModelExecutor {
     /// Pure request-body construction, pulled out of `respond` so the
     /// `output_config`/`reasoningLevel` mapping is testable without a network stub.
     static func requestBody(
-        model: String, request: LanguageModelExecutorGenerationRequest
+        model: String,
+        request: LanguageModelExecutorGenerationRequest,
+        providerID: String = "anthropic"
     ) throws -> [String: Any] {
-        let encoded = try ExecutorRequestEncoding.anthropicMessages(from: request.transcript)
+        let encoded = try ExecutorRequestEncoding.anthropicMessages(
+            from: request.transcript, providerID: providerID
+        )
         var body: [String: Any] = [
             "model": model,
             "max_tokens": request.generationOptions.maximumResponseTokens ?? 4_096,
@@ -387,7 +413,9 @@ enum ExecutorRequestEncoding {
         )
     }
 
-    static func anthropicMessages(from transcript: Transcript) throws -> AnthropicRequest {
+    static func anthropicMessages(
+        from transcript: Transcript, providerID: String = "anthropic"
+    ) throws -> AnthropicRequest {
         var systemParts: [String] = []
         var messages: [[String: Any]] = []
         var assistantBlocks: [[String: Any]] = []
@@ -413,7 +441,7 @@ enum ExecutorRequestEncoding {
 
             case let .reasoning(reasoning):
                 let owner = reasoning.metadata[TranscriptMetadataKeys.signatureProvider] as? String
-                guard owner == "anthropic" else { continue }
+                guard owner == providerID else { continue }
                 // redacted_thinking blocks round-trip independently of a signed
                 // thinking block — a response can carry either or both. Ordered
                 // before the thinking block: an approximation of arrival order,

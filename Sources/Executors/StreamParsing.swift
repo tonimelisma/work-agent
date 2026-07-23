@@ -206,8 +206,11 @@ public struct AnthropicStreamParser: Sendable {
 
     private var tools: [Int: ToolState] = [:]
     private var inputTokens = 0
+    private let providerID: String
 
-    public init() {}
+    public init(providerID: String = "anthropic") {
+        self.providerID = providerID
+    }
 
     public mutating func consume(_ line: String, lineNumber: Int) throws -> [ExecutorEvent] {
         guard let object = try sseObject(from: line, lineNumber: lineNumber) else { return [] }
@@ -218,7 +221,7 @@ public struct AnthropicStreamParser: Sendable {
         case "error":
             let error = object["error"] as? [String: Any]
             throw ProviderStreamError.event(
-                provider: "anthropic",
+                provider: providerID,
                 type: error?["type"] as? String,
                 message: error?["message"] as? String
             )

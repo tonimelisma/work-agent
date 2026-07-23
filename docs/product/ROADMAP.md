@@ -29,25 +29,7 @@ in neither place is a bug.
 
 ---
 
-## 1. Two provider accounts need Toni, not code
-
-The 2026-07-21 matrix reads **9 of 11**. The two failures are not fixable from this
-repo, and both are blocked on an account:
-
-1. **zai/GLM: 401 at the account level.** The HS256 JWT we build is proven correct
-   *and sufficient* — a four-header experiment showed the server distinguishes a
-   malformed token (error 401) from a structurally valid one it declines (error
-   1000), and ours lands in the latter. **Toni action**: check the Zhipu key's type
-   and platform entitlement on their console.
-2. **thinkingmachines: nothing deployed.** `GET /v1/models` returns an empty list
-   with a valid key. **Toni action**: deploy/enable `inkling` or confirm the
-   account.
-
-Not scheduled as engineering work — nothing to build until an account answers.
-Evidence for both is in
-[research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md).
-
-## 2. Email: Gmail and Outlook via MCP
+## 1. Email: Gmail and Outlook via MCP
 
 "Gmail and Outlook via MCP. No one uses the local mail app. Put them ASAP." The
 assistant's killer capability, and it carries the MCP foundation with it: the
@@ -57,19 +39,19 @@ fallback, never silently flattened), Gmail and Outlook servers as the proving
 integrations — real-world schema corpora, OAuth handled by the servers, not by us.
 The Recorder's journal-before-execute guard starts earning rent here: "may have sent" is asked about, never silently repeated.
 
-## 3. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
+## 2. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
 "Yes all office doc creation too ASAP. Google via MCP if available. Docx xlsx pptx
 locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (all
 three are OOXML zips — the ZIPFoundation path that reads docx writes them); no
 code-execution sandbox in the loop, unlike every competitor. Google
-Docs/Sheets/Slides only through existing MCP servers riding item 2 — we never
+Docs/Sheets/Slides only through existing MCP servers riding item 1 — we never
 build our own Google OAuth. Waved for value (2026-07-19 re-analysis): **wave 1 = PDF + docx** — the daily
 asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
 planning; xlsx/pptx *reading* settled with wave 2.
 
-## 4. ToolKitPIM: Contacts, Calendar, Reminders
+## 3. ToolKitPIM: Contacts, Calendar, Reminders
 
 "What's on my calendar" — the local-first answer to Cowork's OAuth connectors:
 EventKit/Contacts frameworks, no sign-in, works offline. Cross-platform domain
